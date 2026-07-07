@@ -138,8 +138,18 @@ private struct PRRow: View {
     let row: MenuRow
     @Environment(\.dismiss) private var dismiss
     @State private var hovering = false
+    @State private var expanded = false
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            rowButton
+            if expanded {
+                checksList
+            }
+        }
+    }
+
+    private var rowButton: some View {
         Button {
             NSWorkspace.shared.open(row.url)
             dismiss()
@@ -179,6 +189,18 @@ private struct PRRow: View {
                 if let jiraURL = row.jiraURL {
                     JiraLinkText(url: jiraURL)
                 }
+                if !row.checkDetails.isEmpty {
+                    Button {
+                        withAnimation(.easeOut(duration: 0.15)) { expanded.toggle() }
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.tertiary)
+                            .rotationEffect(expanded ? .degrees(90) : .zero)
+                    }
+                    .buttonStyle(.plain)
+                    .help(expanded ? "Hide checks" : "Show checks")
+                }
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
@@ -190,6 +212,40 @@ private struct PRRow: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
+    }
+
+    private var checksList: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(row.checkDetails.enumerated()), id: \.offset) { _, check in
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(dotColor(for: check.state))
+                        .frame(width: 6, height: 6)
+                    Text(check.name)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+        }
+        .padding(.leading, 46)
+        .padding(.trailing, 8)
+        .padding(.top, 1)
+        .padding(.bottom, 5)
+    }
+
+    private func dotColor(for state: CIState) -> Color {
+        switch state {
+        case .passing:
+            return Catppuccin.green
+        case .failing:
+            return Catppuccin.red
+        case .pending:
+            return Catppuccin.peach
+        case .noChecks:
+            return Color.secondary.opacity(0.4)
+        }
     }
 
     private var avatar: some View {

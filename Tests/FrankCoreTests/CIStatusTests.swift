@@ -122,6 +122,69 @@ struct CIStatusTests {
         #expect(checks.createdAt == ISO8601DateFormatter().date(from: "2026-07-04T10:00:00Z"))
     }
 
+    @Test("the query asks for individual check contexts")
+    func queryAsksForCheckContexts() {
+        let query = ChecksQuery.build(for: [makePullRequest(id: 1)])
+
+        #expect(query.contains("contexts(first: 30) { nodes { __typename ... on CheckRun { name conclusion } ... on StatusContext { context state } } }"))
+    }
+
+    @Test("check runs and status contexts decode into named check details")
+    func decodesCheckDetails() throws {
+        let data = Data("""
+        {"data": {
+            "pr0": {"pullRequest": {
+                "reviewDecision": null,
+                "commits": {"nodes": [{"commit": {"statusCheckRollup": {
+                    "state": "FAILURE",
+                    "contexts": {"nodes": [
+                        {"__typename": "CheckRun", "name": "Travis CI - Pull Request", "conclusion": "FAILURE"},
+                        {"__typename": "CheckRun", "name": "Summary", "conclusion": "SUCCESS"},
+                        {"__typename": "CheckRun", "name": "Deploy preview", "conclusion": null},
+                        {"__typename": "CheckRun", "name": "Lint (optional)", "conclusion": "SKIPPED"},
+                        {"__typename": "StatusContext", "context": "codecov/project", "state": "SUCCESS"},
+                        {"__typename": "StatusContext", "context": "codecov/patch", "state": "PENDING"}
+                    ]}
+                }}}]}
+            }}
+        }}
+        """.utf8)
+
+        let checks = try #require(try ChecksResponse.statuses(from: data, orderedIDs: [1])[1])
+
+        #expect(checks.checkDetails == [
+            CheckDetail(name: "Travis CI - Pull Request", state: .failing),
+            CheckDetail(name: "Summary", state: .passing),
+            CheckDetail(name: "Deploy preview", state: .pending),
+            CheckDetail(name: "Lint (optional)", state: .noChecks),
+            CheckDetail(name: "codecov/project", state: .passing),
+            CheckDetail(name: "codecov/patch", state: .pending),
+        ])
+    }
+
+    @Test("cancelled and timed out check runs read as failing")
+    func hardStopsReadAsFailing() throws {
+        let data = Data("""
+        {"data": {
+            "pr0": {"pullRequest": {
+                "reviewDecision": null,
+                "commits": {"nodes": [{"commit": {"statusCheckRollup": {
+                    "state": "FAILURE",
+                    "contexts": {"nodes": [
+                        {"__typename": "CheckRun", "name": "a", "conclusion": "CANCELLED"},
+                        {"__typename": "CheckRun", "name": "b", "conclusion": "TIMED_OUT"},
+                        {"__typename": "CheckRun", "name": "c", "conclusion": "ACTION_REQUIRED"}
+                    ]}
+                }}}]}
+            }}
+        }}
+        """.utf8)
+
+        let checks = try #require(try ChecksResponse.statuses(from: data, orderedIDs: [1])[1])
+
+        #expect(checks.checkDetails.map(\.state) == [.failing, .failing, .failing])
+    }
+
     @Test("a checks response decodes comment counts and recent commenters")
     func decodesComments() throws {
         let data = Data("""

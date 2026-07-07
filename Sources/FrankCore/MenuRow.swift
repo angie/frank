@@ -37,6 +37,7 @@ public struct MenuRow: Equatable, Sendable, Identifiable {
     public let age: String?
     public let avatarURL: URL?
     public let jiraURL: URL?
+    public let checkDetails: [CheckDetail]
 
     public static func rows(
         for pullRequests: [PullRequest],
@@ -60,7 +61,8 @@ public struct MenuRow: Equatable, Sendable, Identifiable {
                     deletions: checks?.deletions ?? 0,
                     age: checks?.createdAt.map { age(from: $0, to: now) },
                     avatarURL: pr.avatarURL,
-                    jiraURL: JiraLink.resolve(for: pr, among: jiraContext ?? pullRequests)
+                    jiraURL: JiraLink.resolve(for: pr, among: jiraContext ?? pullRequests),
+                    checkDetails: checks?.checkDetails ?? []
                 )
             }
     }

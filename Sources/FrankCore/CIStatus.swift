@@ -40,6 +40,30 @@ public enum ReviewDecision: String, Equatable, Sendable, Codable {
     }
 }
 
+public struct CheckDetail: Equatable, Sendable, Codable {
+    public let name: String
+    public let state: CIState
+
+    public init(name: String, state: CIState) {
+        self.name = name
+        self.state = state
+    }
+
+    public init(checkRunConclusion: String?, name: String) {
+        self.name = name
+        switch checkRunConclusion {
+        case "SUCCESS":
+            state = .passing
+        case "FAILURE", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED", "STARTUP_FAILURE":
+            state = .failing
+        case nil:
+            state = .pending
+        default:
+            state = .noChecks
+        }
+    }
+}
+
 public struct PRChecks: Equatable, Sendable, Codable {
     public let ci: CIState
     public let review: ReviewDecision
@@ -49,6 +73,7 @@ public struct PRChecks: Equatable, Sendable, Codable {
     public let deletions: Int
     public let approvals: Int
     public let createdAt: Date?
+    public let checkDetails: [CheckDetail]
 
     public init(
         ci: CIState,
@@ -58,7 +83,8 @@ public struct PRChecks: Equatable, Sendable, Codable {
         additions: Int = 0,
         deletions: Int = 0,
         approvals: Int = 0,
-        createdAt: Date? = nil
+        createdAt: Date? = nil,
+        checkDetails: [CheckDetail] = []
     ) {
         self.ci = ci
         self.review = review
@@ -68,6 +94,7 @@ public struct PRChecks: Equatable, Sendable, Codable {
         self.deletions = deletions
         self.approvals = approvals
         self.createdAt = createdAt
+        self.checkDetails = checkDetails
     }
 
     public init(from decoder: any Decoder) throws {
@@ -80,6 +107,7 @@ public struct PRChecks: Equatable, Sendable, Codable {
         deletions = try container.decodeIfPresent(Int.self, forKey: .deletions) ?? 0
         approvals = try container.decodeIfPresent(Int.self, forKey: .approvals) ?? 0
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
+        checkDetails = try container.decodeIfPresent([CheckDetail].self, forKey: .checkDetails) ?? []
     }
 }
 
@@ -94,7 +122,8 @@ public enum ChecksQuery {
             reviewDecision additions deletions createdAt \
             reviews(states: APPROVED) { totalCount } \
             comments(last: 10) { totalCount nodes { author { login } } } \
-            commits(last: 1) { nodes { commit { statusCheckRollup { state } } } } } }
+            commits(last: 1) { nodes { commit { statusCheckRollup { state \
+            contexts(first: 30) { nodes { __typename ... on CheckRun { name conclusion } ... on StatusContext { context state } } } } } } } } }
             """
         }
         return "query { \(blocks.joined(separator: " ")) }"
@@ -151,6 +180,19 @@ public enum ChecksResponse {
 
     private struct Rollup: Decodable {
         let state: String
+        let contexts: Contexts?
+    }
+
+    private struct Contexts: Decodable {
+        let nodes: [ContextNode]
+    }
+
+    private struct ContextNode: Decodable {
+        let __typename: String
+        let name: String?
+        let conclusion: String?
+        let context: String?
+        let state: String?
     }
 
     public static func statuses(from data: Data, orderedIDs: [Int]) throws -> [Int: PRChecks] {
@@ -169,7 +211,17 @@ public enum ChecksResponse {
                 additions: pr?.additions ?? 0,
                 deletions: pr?.deletions ?? 0,
                 approvals: pr?.reviews?.totalCount ?? 0,
-                createdAt: pr?.createdAt
+                createdAt: pr?.createdAt,
+                checkDetails: (rollup?.contexts?.nodes ?? []).compactMap { node in
+                    switch node.__typename {
+                    case "CheckRun":
+                        return CheckDetail(checkRunConclusion: node.conclusion, name: node.name ?? "check")
+                    case "StatusContext":
+                        return CheckDetail(name: node.context ?? "status", state: CIState(rollupState: node.state))
+                    default:
+                        return nil
+                    }
+                }
             )
         }
         return statuses

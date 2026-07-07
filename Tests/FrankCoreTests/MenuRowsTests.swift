@@ -105,6 +105,16 @@ struct MenuRowsTests {
         #expect(sections.watching.map(\.id) == [3])
     }
 
+    @Test("rows carry their check details through")
+    func rowsCarryCheckDetails() throws {
+        let details = [CheckDetail(name: "Travis", state: .failing)]
+        let checks = PRChecks(ci: .failing, review: .noDecision, checkDetails: details)
+
+        let rows = MenuRow.rows(for: [makePullRequest(id: 1)], statuses: [1: checks], now: now)
+
+        #expect(try #require(rows.first).checkDetails == details)
+    }
+
     @Test("rows carry a Jira link learned across sections")
     func rowsCarryJiraLinkAcrossSections() throws {
         let mine = makePullRequest(id: 1, title: "ACME-42: my change", body: nil)

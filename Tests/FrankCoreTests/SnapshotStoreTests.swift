@@ -41,6 +41,7 @@ struct SnapshotStoreTests {
         #expect(loaded?[1]?.ci == .failing)
         #expect(loaded?[1]?.approvals == 0)
         #expect(loaded?[1]?.createdAt == nil)
+        #expect(loaded?[1]?.checkDetails == [])
     }
 
     @Test("a corrupt file loads as nothing")
