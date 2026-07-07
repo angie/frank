@@ -390,10 +390,10 @@ private struct FrankMenuBarLabel: View {
         }
         .task {
             await UNNotifier.requestPermission()
-            if ProcessInfo.processInfo.environment["FRANK_TEST_NOTIFICATION"] != nil {
+            if let label = ProcessInfo.processInfo.environment["FRANK_TEST_NOTIFICATION"] {
                 await UNNotifier().post(NotificationContent(
                     title: "🐢 Frank is watching",
-                    body: "Notification plumbing works",
+                    body: label == "1" ? "Notification plumbing works" : label,
                     url: URL(string: "https://github.com")!
                 ))
             }

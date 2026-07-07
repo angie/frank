@@ -20,17 +20,23 @@ let radius = rect.width * 0.2237
 NSColor(srgbRed: 0xEF / 255, green: 0xF1 / 255, blue: 0xF5 / 255, alpha: 1).setFill()
 NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
 
-// The tortoise, centred at 72% of the canvas.
+// The tortoise, centred at 72% of the canvas, mirrored to face right.
 guard let tortoise = NSImage(contentsOfFile: "assets/tortoise.svg") else {
     fatalError("assets/tortoise.svg missing or unreadable")
 }
 let aspect = tortoise.size.height / tortoise.size.width
 let width = size * 0.72
 let height = width * aspect
-tortoise.draw(
-    in: NSRect(x: (size - width) / 2, y: (size - height) / 2, width: width, height: height),
-    from: .zero, operation: .sourceOver, fraction: 1
-)
+if let cg = NSGraphicsContext.current?.cgContext {
+    cg.saveGState()
+    cg.translateBy(x: size, y: 0)
+    cg.scaleBy(x: -1, y: 1)
+    tortoise.draw(
+        in: NSRect(x: (size - width) / 2, y: (size - height) / 2, width: width, height: height),
+        from: .zero, operation: .sourceOver, fraction: 1
+    )
+    cg.restoreGState()
+}
 
 image.unlockFocus()
 
