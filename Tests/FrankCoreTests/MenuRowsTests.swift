@@ -105,6 +105,17 @@ struct MenuRowsTests {
         #expect(sections.watching.map(\.id) == [3])
     }
 
+    @Test("rows carry a Jira link learned across sections")
+    func rowsCarryJiraLinkAcrossSections() throws {
+        let mine = makePullRequest(id: 1, title: "ACME-42: my change", body: nil)
+        let watched = makePullRequest(id: 2, body: "https://example.atlassian.net/browse/TREK-9")
+
+        let sections = MenuSections.compute(for: [mine, watched], statuses: [:], authoredIDs: [1], now: now)
+
+        #expect(try #require(sections.mine.first).jiraURL == URL(string: "https://example.atlassian.net/browse/ACME-42"))
+        #expect(try #require(sections.watching.first).jiraURL == URL(string: "https://example.atlassian.net/browse/TREK-9"))
+    }
+
     @Test("sections carry status through")
     func sectionsCarryStatus() throws {
         let sections = MenuSections.compute(

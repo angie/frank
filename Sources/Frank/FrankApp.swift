@@ -163,12 +163,15 @@ private struct PRRow: View {
                         }
                         if row.additions + row.deletions > 0 {
                             HStack(spacing: 3) {
-                                Text("+\(row.additions)").foregroundStyle(.green)
-                                Text("−\(row.deletions)").foregroundStyle(.red)
+                                Text("+\(row.additions)").foregroundStyle(Catppuccin.green)
+                                Text("−\(row.deletions)").foregroundStyle(Catppuccin.red)
                             }
                         }
                         if let age = row.age {
                             Text(age)
+                        }
+                        if let jiraURL = row.jiraURL {
+                            JiraLinkText(url: jiraURL)
                         }
                     }
                     .font(.system(size: 11))
@@ -210,18 +213,39 @@ private struct PRRow: View {
         case .passing:
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 11))
-                .foregroundStyle(.green)
+                .foregroundStyle(Catppuccin.green)
         case .failing:
             Image(systemName: "xmark.circle.fill")
                 .font(.system(size: 11))
-                .foregroundStyle(.red)
+                .foregroundStyle(Catppuccin.red)
         case .pending:
             Image(systemName: "clock.fill")
                 .font(.system(size: 11))
-                .foregroundStyle(.orange)
+                .foregroundStyle(Catppuccin.peach)
         case .noChecks:
             EmptyView()
         }
+    }
+}
+
+private struct JiraLinkText: View {
+    let url: URL
+    @Environment(\.dismiss) private var dismiss
+    @State private var hovering = false
+
+    var body: some View {
+        Button {
+            NSWorkspace.shared.open(url)
+            dismiss()
+        } label: {
+            Text("jira ↗")
+                .font(.system(size: 11))
+                .foregroundStyle(Catppuccin.blue)
+                .underline(hovering)
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help("Open Jira ticket")
     }
 }
 

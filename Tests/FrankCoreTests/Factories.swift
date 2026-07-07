@@ -9,7 +9,8 @@ func makePullRequest(
     htmlURL: URL = URL(string: "https://github.com/angie/pr-frank/pull/42")!,
     updatedAt: Date = Date(timeIntervalSince1970: 1_780_000_000),
     authorLogin: String? = nil,
-    avatarURL: URL? = nil
+    avatarURL: URL? = nil,
+    body: String? = nil
 ) -> PullRequest {
     PullRequest(
         id: id,
@@ -19,6 +20,7 @@ func makePullRequest(
         htmlURL: htmlURL,
         updatedAt: updatedAt,
         authorLogin: authorLogin,
-        avatarURL: avatarURL
+        avatarURL: avatarURL,
+        body: body
     )
 }

@@ -9,6 +9,7 @@ public struct PullRequest: Equatable, Sendable, Identifiable {
     public let updatedAt: Date
     public let authorLogin: String?
     public let avatarURL: URL?
+    public let body: String?
 
     public init(
         id: Int,
@@ -18,7 +19,8 @@ public struct PullRequest: Equatable, Sendable, Identifiable {
         htmlURL: URL,
         updatedAt: Date,
         authorLogin: String? = nil,
-        avatarURL: URL? = nil
+        avatarURL: URL? = nil,
+        body: String? = nil
     ) {
         self.id = id
         self.number = number
@@ -28,12 +30,13 @@ public struct PullRequest: Equatable, Sendable, Identifiable {
         self.updatedAt = updatedAt
         self.authorLogin = authorLogin
         self.avatarURL = avatarURL
+        self.body = body
     }
 }
 
 extension PullRequest: Decodable {
     private enum CodingKeys: String, CodingKey {
-        case id, number, title, user
+        case id, number, title, user, body
         case htmlURL = "html_url"
         case repositoryURL = "repository_url"
         case updatedAt = "updated_at"
@@ -60,6 +63,7 @@ extension PullRequest: Decodable {
         let user = try container.decodeIfPresent(User.self, forKey: .user)
         authorLogin = user?.login
         avatarURL = user?.avatarURL
+        body = try container.decodeIfPresent(String.self, forKey: .body)
 
         let repositoryURL = try container.decode(String.self, forKey: .repositoryURL)
         guard let range = repositoryURL.range(of: "/repos/") else {

@@ -18,8 +18,8 @@ public struct MenuSections: Equatable, Sendable {
             }
         }
         return MenuSections(
-            mine: MenuRow.rows(for: mine, statuses: statuses, now: now),
-            watching: MenuRow.rows(for: watching, statuses: statuses, now: now)
+            mine: MenuRow.rows(for: mine, statuses: statuses, now: now, resolvingJiraAmong: pullRequests),
+            watching: MenuRow.rows(for: watching, statuses: statuses, now: now, resolvingJiraAmong: pullRequests)
         )
     }
 }
@@ -36,8 +36,14 @@ public struct MenuRow: Equatable, Sendable, Identifiable {
     public let deletions: Int
     public let age: String?
     public let avatarURL: URL?
+    public let jiraURL: URL?
 
-    public static func rows(for pullRequests: [PullRequest], statuses: [Int: PRChecks], now: Date) -> [MenuRow] {
+    public static func rows(
+        for pullRequests: [PullRequest],
+        statuses: [Int: PRChecks],
+        now: Date,
+        resolvingJiraAmong jiraContext: [PullRequest]? = nil
+    ) -> [MenuRow] {
         pullRequests
             .sorted { $0.updatedAt > $1.updatedAt }
             .map { pr in
@@ -53,7 +59,8 @@ public struct MenuRow: Equatable, Sendable, Identifiable {
                     additions: checks?.additions ?? 0,
                     deletions: checks?.deletions ?? 0,
                     age: checks?.createdAt.map { age(from: $0, to: now) },
-                    avatarURL: pr.avatarURL
+                    avatarURL: pr.avatarURL,
+                    jiraURL: JiraLink.resolve(for: pr, among: jiraContext ?? pullRequests)
                 )
             }
     }
