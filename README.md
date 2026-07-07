@@ -8,8 +8,11 @@ when something genuinely changes.
 
 - **Menu bar tortoise** — hollow when all is calm; filled when something needs attention
   (failing CI or changes requested). A dash appears beside him when GitHub is unreachable.
-- **The menu** — a headline count plus one row per PR (`repo#number · title`, newest
-  activity first) with its CI state glyph; click a row to open the PR.
+- **The panel** — click the tortoise for a rich dropdown: PRs grouped into **Mine** and
+  **Watching**, each row with author avatar, Catppuccin-pastel CI badge, title, repo,
+  approvals, coloured +/− diff size and age. Click a row to open the PR; a right-aligned
+  `jira ↗` link opens the ticket (resolved from a browse link in the PR body, or the
+  title's ticket key plus a Jira base learned from sibling PRs).
 - **Immediate banners** (the interruption tier): CI flips to passing or failing, approvals,
   and changes-requested — once per transition, never on first sighting, never repeated.
 - **Comment digests** (the calm tier): new comments from other people accumulate into one
@@ -52,12 +55,13 @@ muter PR #306 — adopt it once released).
 
 ## Later ideas
 
-- CI glyph redesign (current checkmark/xmark/clock circles are placeholder-grade)
-- A subtle coloured attention dot — `MenuBarExtra` labels fight this: emoji render huge,
-  shapes get template-stripped, font/transform sizing is ignored; needs a custom
-  appearance-aware `NSImage`
+- A subtle coloured attention dot in the menu bar — `MenuBarExtra` labels fight this:
+  emoji render huge, shapes get template-stripped, font/transform sizing is ignored;
+  needs a custom appearance-aware `NSImage` (the filled tortoise carries attention today)
 - Clicking a banner opens the PR (URL already rides in `userInfo`; needs a
   `UNUserNotificationCenter` delegate)
+- Per-check detail on each row (PullBar-style submenu of individual check suites)
+- A `defaults` override for the Jira base, for when no PR body carries a browse link
 - Quiet hours / Focus awareness; per-repo mute; explicit pin/watchlist;
   review-requested scope; launch at login; app icon; Sparkle-style updates
 - Digest window resets on relaunch (worst case: one early digest after a restart)
