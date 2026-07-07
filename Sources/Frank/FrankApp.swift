@@ -170,14 +170,14 @@ private struct PRRow: View {
                         if let age = row.age {
                             Text(age)
                         }
-                        if let jiraURL = row.jiraURL {
-                            JiraLinkText(url: jiraURL)
-                        }
                     }
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
+                if let jiraURL = row.jiraURL {
+                    JiraLinkText(url: jiraURL)
+                }
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
