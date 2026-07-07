@@ -15,6 +15,20 @@ struct LanternApp: App {
 
     var body: some Scene {
         MenuBarExtra {
+            switch monitor.state {
+            case .idle:
+                Text("Checking GitHub…")
+            case .failed:
+                Text("Couldn't reach GitHub")
+            case .loaded(let pullRequests) where pullRequests.isEmpty:
+                Text("No open pull requests")
+            case .loaded(let pullRequests):
+                ForEach(MenuRow.rows(for: pullRequests)) { row in
+                    Button(row.text) { NSWorkspace.shared.open(row.url) }
+                }
+            }
+            Divider()
+            Button("Refresh Now") { Task { await monitor.poll() } }
             Button("Quit Lantern") { NSApp.terminate(nil) }
         } label: {
             LanternMenuBarLabel(monitor: monitor)
