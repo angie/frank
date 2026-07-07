@@ -28,50 +28,216 @@ struct FrankApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            Text(MenuBarSummary.menuHeadline(for: monitor.state))
-            if case .loaded(let pullRequests) = monitor.state, !pullRequests.isEmpty {
-                let sections = MenuSections.compute(
-                    for: pullRequests,
-                    statuses: monitor.statuses,
-                    authoredIDs: monitor.authoredIDs,
-                    now: Date()
-                )
-                if !sections.mine.isEmpty {
-                    Section("Mine") {
-                        ForEach(sections.mine) { PRRowButton(row: $0) }
-                    }
-                }
-                if !sections.watching.isEmpty {
-                    Section("Watching") {
-                        ForEach(sections.watching) { PRRowButton(row: $0) }
-                    }
-                }
-            }
-            Divider()
-            Button("Refresh Now") { Task { await monitor.poll() } }
-            Button("Quit Frank") { NSApp.terminate(nil) }
+            FrankPanel(monitor: monitor)
         } label: {
             FrankMenuBarLabel(monitor: monitor)
         }
+        .menuBarExtraStyle(.window)
     }
 }
 
-private struct PRRowButton: View {
+private struct FrankPanel: View {
+    let monitor: PRMonitor
+
+    var body: some View {
+        VStack(spacing: 0) {
+            content
+            Divider()
+            footer
+        }
+        .frame(width: 380)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch monitor.state {
+        case .idle:
+            PanelMessage(text: "Checking GitHub…")
+        case .failed:
+            PanelMessage(text: "Couldn't reach GitHub — Frank keeps trying")
+        case .loaded(let pullRequests) where pullRequests.isEmpty:
+            PanelMessage(text: "No open pull requests.\nFrank will let you know when something needs you.")
+        case .loaded(let pullRequests):
+            let sections = MenuSections.compute(
+                for: pullRequests,
+                statuses: monitor.statuses,
+                authoredIDs: monitor.authoredIDs,
+                now: Date()
+            )
+            if pullRequests.count > 12 {
+                ScrollView {
+                    sectionList(sections)
+                }
+                .frame(height: 480)
+            } else {
+                sectionList(sections)
+            }
+        }
+    }
+
+    private func sectionList(_ sections: MenuSections) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            if !sections.mine.isEmpty {
+                SectionHeader(title: "Mine")
+                ForEach(sections.mine) { PRRow(row: $0) }
+            }
+            if !sections.watching.isEmpty {
+                SectionHeader(title: "Watching")
+                    .padding(.top, sections.mine.isEmpty ? 0 : 8)
+                ForEach(sections.watching) { PRRow(row: $0) }
+            }
+        }
+        .padding(6)
+        .frame(width: 380, alignment: .leading)
+    }
+
+    private var footer: some View {
+        HStack {
+            FooterButton(title: "Refresh Now") {
+                Task { await monitor.poll() }
+            }
+            Spacer()
+            FooterButton(title: "Quit Frank") {
+                NSApp.terminate(nil)
+            }
+            .keyboardShortcut("q")
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+    }
+}
+
+private struct PanelMessage: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 28)
+            .padding(.horizontal, 16)
+    }
+}
+
+private struct SectionHeader: View {
+    let title: String
+
+    var body: some View {
+        Text(title)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+    }
+}
+
+private struct PRRow: View {
     let row: MenuRow
+    @Environment(\.dismiss) private var dismiss
+    @State private var hovering = false
 
     var body: some View {
         Button {
             NSWorkspace.shared.open(row.url)
+            dismiss()
         } label: {
-            if let symbol = row.ciSymbolName {
-                Label(row.text, systemImage: symbol)
-            } else {
-                Text(row.text)
+            HStack(alignment: .center, spacing: 8) {
+                avatar
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 4) {
+                        ciIcon
+                        Text(row.title)
+                            .font(.system(size: 13, weight: .medium))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Text("#\(row.number)")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.tertiary)
+                    }
+                    HStack(spacing: 8) {
+                        Text(row.repoShortName)
+                        if row.approvals > 0 {
+                            Text("✓ \(row.approvals)")
+                        }
+                        if row.additions + row.deletions > 0 {
+                            HStack(spacing: 3) {
+                                Text("+\(row.additions)").foregroundStyle(.green)
+                                Text("−\(row.deletions)").foregroundStyle(.red)
+                            }
+                        }
+                        if let age = row.age {
+                            Text(age)
+                        }
+                    }
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
             }
-            if let detail = row.detail {
-                Text(detail)
-            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(hovering ? Color.primary.opacity(0.07) : Color.clear)
+            )
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+    }
+
+    private var avatar: some View {
+        AsyncImage(url: row.avatarURL) { image in
+            image.resizable()
+        } placeholder: {
+            Circle()
+                .fill(.quaternary)
+                .overlay(
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                )
+        }
+        .frame(width: 22, height: 22)
+        .clipShape(Circle())
+    }
+
+    @ViewBuilder
+    private var ciIcon: some View {
+        switch row.ci {
+        case .passing:
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 11))
+                .foregroundStyle(.green)
+        case .failing:
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 11))
+                .foregroundStyle(.red)
+        case .pending:
+            Image(systemName: "clock.fill")
+                .font(.system(size: 11))
+                .foregroundStyle(.orange)
+        case .noChecks:
+            EmptyView()
+        }
+    }
+}
+
+private struct FooterButton: View {
+    let title: String
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 12))
+                .foregroundStyle(hovering ? .primary : .secondary)
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
     }
 }
 

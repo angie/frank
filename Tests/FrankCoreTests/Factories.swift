@@ -7,7 +7,9 @@ func makePullRequest(
     title: String = "Add mindful notifications",
     repositoryFullName: String = "angie/pr-frank",
     htmlURL: URL = URL(string: "https://github.com/angie/pr-frank/pull/42")!,
-    updatedAt: Date = Date(timeIntervalSince1970: 1_780_000_000)
+    updatedAt: Date = Date(timeIntervalSince1970: 1_780_000_000),
+    authorLogin: String? = nil,
+    avatarURL: URL? = nil
 ) -> PullRequest {
     PullRequest(
         id: id,
@@ -15,6 +17,8 @@ func makePullRequest(
         title: title,
         repositoryFullName: repositoryFullName,
         htmlURL: htmlURL,
-        updatedAt: updatedAt
+        updatedAt: updatedAt,
+        authorLogin: authorLogin,
+        avatarURL: avatarURL
     )
 }

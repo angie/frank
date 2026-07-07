@@ -15,6 +15,7 @@ private func searchResponseData(repositoryURL: String = "https://api.github.com/
           "html_url": "https://github.com/angie/pr-frank/pull/42",
           "repository_url": "\(repositoryURL)",
           "updated_at": "2026-07-01T10:00:00Z",
+          "user": { "login": "angie", "avatar_url": "https://avatars.githubusercontent.com/u/1?v=4" },
           "pull_request": { "url": "https://api.github.com/repos/angie/pr-frank/pulls/42" }
         },
         {
@@ -50,8 +51,11 @@ struct SearchResponseDecodingTests {
         #expect(first.repositoryFullName == "angie/pr-frank")
         #expect(first.htmlURL == URL(string: "https://github.com/angie/pr-frank/pull/42"))
         #expect(first.updatedAt == isoDate("2026-07-01T10:00:00Z"))
+        #expect(first.authorLogin == "angie")
+        #expect(first.avatarURL == URL(string: "https://avatars.githubusercontent.com/u/1?v=4"))
 
         let second = try #require(response.items.last)
+        #expect(second.authorLogin == nil)
         #expect(second.id == 222)
         #expect(second.number == 7)
         #expect(second.repositoryFullName == "octo-org/my.repo")
