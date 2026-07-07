@@ -5,9 +5,17 @@ struct GitHubSearchClient: PullRequestSearching {
     let token: String
 
     func openAuthoredPullRequests() async throws -> [PullRequest] {
+        try await search(query: "is:pr is:open author:@me")
+    }
+
+    func openCommentedPullRequests() async throws -> [PullRequest] {
+        try await search(query: "is:pr is:open commenter:@me")
+    }
+
+    private func search(query: String) async throws -> [PullRequest] {
         var components = URLComponents(string: "https://api.github.com/search/issues")!
         components.queryItems = [
-            URLQueryItem(name: "q", value: "is:pr is:open author:@me"),
+            URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "per_page", value: "100"),
         ]
         var request = URLRequest(url: components.url!)
@@ -45,6 +53,10 @@ enum GitHubToken {
 
 struct UnauthenticatedClient: PullRequestSearching {
     func openAuthoredPullRequests() async throws -> [PullRequest] {
+        throw URLError(.userAuthenticationRequired)
+    }
+
+    func openCommentedPullRequests() async throws -> [PullRequest] {
         throw URLError(.userAuthenticationRequired)
     }
 }

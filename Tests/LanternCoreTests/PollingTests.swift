@@ -6,15 +6,25 @@ private struct StubError: Error {}
 
 private actor FakeSearchClient: PullRequestSearching {
     private(set) var fetchCount = 0
-    private let result: Result<[PullRequest], Error>
+    private let authored: Result<[PullRequest], Error>
+    private let commented: Result<[PullRequest], Error>
 
     init(result: Result<[PullRequest], Error>) {
-        self.result = result
+        self.init(authored: result, commented: .success([]))
+    }
+
+    init(authored: Result<[PullRequest], Error>, commented: Result<[PullRequest], Error>) {
+        self.authored = authored
+        self.commented = commented
     }
 
     func openAuthoredPullRequests() async throws -> [PullRequest] {
         fetchCount += 1
-        return try result.get()
+        return try authored.get()
+    }
+
+    func openCommentedPullRequests() async throws -> [PullRequest] {
+        try commented.get()
     }
 }
 
@@ -68,6 +78,34 @@ struct PollingTests {
 
         #expect(await client.fetchCount == 2)
         #expect(await recorder.durations == [.seconds(60), .seconds(60)])
+    }
+
+    @MainActor
+    @Test("poll tracks PRs I commented on alongside authored ones")
+    func pollTracksCommentedOnPullRequests() async {
+        let authored = makePullRequest(id: 1)
+        let commented = makePullRequest(id: 2)
+        let monitor = PRMonitor(client: FakeSearchClient(
+            authored: .success([authored]),
+            commented: .success([commented])
+        ))
+
+        await monitor.poll()
+
+        #expect(monitor.state == .loaded([authored, commented]))
+    }
+
+    @MainActor
+    @Test("a failing commented search fails the whole poll")
+    func commentedFailureMarksFailed() async {
+        let monitor = PRMonitor(client: FakeSearchClient(
+            authored: .success([makePullRequest()]),
+            commented: .failure(StubError())
+        ))
+
+        await monitor.poll()
+
+        #expect(monitor.state == .failed)
     }
 
     @Test("the default poll interval is sixty seconds")

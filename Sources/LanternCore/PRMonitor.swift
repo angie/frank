@@ -3,6 +3,7 @@ import Observation
 
 public protocol PullRequestSearching: Sendable {
     func openAuthoredPullRequests() async throws -> [PullRequest]
+    func openCommentedPullRequests() async throws -> [PullRequest]
 }
 
 @MainActor
@@ -20,7 +21,9 @@ public final class PRMonitor {
 
     public func poll() async {
         do {
-            state = .loaded(try await client.openAuthoredPullRequests())
+            async let authored = client.openAuthoredPullRequests()
+            async let commented = client.openCommentedPullRequests()
+            state = .loaded(PRScope.merge(authored: try await authored, commented: try await commented))
         } catch {
             state = .failed
         }
