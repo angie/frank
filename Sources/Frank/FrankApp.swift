@@ -4,6 +4,7 @@ import SwiftUI
 
 @main
 struct FrankApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var monitor: PRMonitor
 
     init() {
