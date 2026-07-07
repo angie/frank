@@ -28,11 +28,28 @@ private actor FakeSearchClient: PullRequestSearching {
     }
 }
 
-private struct FakeChecksClient: ChecksFetching {
-    let result: Result<[Int: CIState], Error>
+private actor FakeChecksClient: ChecksFetching {
+    private var results: [Result<[Int: CIState], Error>]
+
+    init(result: Result<[Int: CIState], Error>) {
+        self.results = [result]
+    }
+
+    init(results: [Result<[Int: CIState], Error>]) {
+        self.results = results
+    }
 
     func ciStates(for pullRequests: [PullRequest]) async throws -> [Int: CIState] {
-        try result.get().filter { id, _ in pullRequests.contains { $0.id == id } }
+        let result = results.count > 1 ? results.removeFirst() : results[0]
+        return try result.get().filter { id, _ in pullRequests.contains { $0.id == id } }
+    }
+}
+
+private actor SpyNotifier: UserNotifier {
+    private(set) var posted: [NotificationContent] = []
+
+    func post(_ content: NotificationContent) async {
+        posted.append(content)
     }
 }
 
@@ -144,6 +161,81 @@ struct PollingTests {
 
         #expect(monitor.state == .loaded(pullRequests))
         #expect(monitor.ciStates.isEmpty)
+    }
+
+    @MainActor
+    @Test("a CI flip between polls posts exactly one banner")
+    func ciFlipPostsExactlyOneBanner() async {
+        let pr = makePullRequest(id: 1)
+        let notifier = SpyNotifier()
+        let monitor = PRMonitor(
+            client: FakeSearchClient(result: .success([pr])),
+            checks: FakeChecksClient(results: [.success([1: .passing]), .success([1: .failing])]),
+            notifier: notifier
+        )
+
+        await monitor.poll()
+        await monitor.poll()
+
+        let posted = await notifier.posted
+        #expect(posted.count == 1)
+        #expect(posted.first?.title == "❌ CI failing")
+    }
+
+    @MainActor
+    @Test("the first poll is a baseline and posts nothing")
+    func firstPollPostsNothing() async {
+        let notifier = SpyNotifier()
+        let monitor = PRMonitor(
+            client: FakeSearchClient(result: .success([makePullRequest(id: 1)])),
+            checks: FakeChecksClient(result: .success([1: .failing])),
+            notifier: notifier
+        )
+
+        await monitor.poll()
+
+        #expect(await notifier.posted.isEmpty)
+    }
+
+    @MainActor
+    @Test("unchanged polls post nothing")
+    func unchangedPollsPostNothing() async {
+        let notifier = SpyNotifier()
+        let monitor = PRMonitor(
+            client: FakeSearchClient(result: .success([makePullRequest(id: 1)])),
+            checks: FakeChecksClient(result: .success([1: .failing])),
+            notifier: notifier
+        )
+
+        await monitor.poll()
+        await monitor.poll()
+        await monitor.poll()
+
+        #expect(await notifier.posted.isEmpty)
+    }
+
+    @MainActor
+    @Test("a checks outage does not swallow a flip; it fires once on recovery")
+    func checksOutageStillFiresFlipOnce() async {
+        let pr = makePullRequest(id: 1)
+        let notifier = SpyNotifier()
+        let monitor = PRMonitor(
+            client: FakeSearchClient(result: .success([pr])),
+            checks: FakeChecksClient(results: [
+                .success([1: .passing]),
+                .failure(StubError()),
+                .success([1: .failing]),
+            ]),
+            notifier: notifier
+        )
+
+        await monitor.poll()
+        await monitor.poll()
+        await monitor.poll()
+
+        let posted = await notifier.posted
+        #expect(posted.count == 1)
+        #expect(posted.first?.title == "❌ CI failing")
     }
 
     @Test("the default poll interval is sixty seconds")

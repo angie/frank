@@ -125,5 +125,9 @@ Before each merge to main:
 
 Quiet hours / focus-mode awareness; per-repo mute; explicit pin/watchlist; review-requested scope; launch-at-login; app icon & polish; Sparkle-style updates.
 
+CI glyph redesign — Angie dislikes the slice-4 checkmark/xmark/clock circles; explore other SF Symbols, colour, or subtler dot indicators during polish.
+
+Clicking a notification banner should open the PR (needs a UNUserNotificationCenter delegate; the URL already rides in userInfo).
+
 ---
 *Delete this file when the plan is complete. If `plans/` is empty, delete the directory.*

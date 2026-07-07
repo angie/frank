@@ -18,6 +18,16 @@ public struct NoChecks: ChecksFetching {
     }
 }
 
+public protocol UserNotifier: Sendable {
+    func post(_ content: NotificationContent) async
+}
+
+public struct SilentNotifier: UserNotifier {
+    public init() {}
+
+    public func post(_ content: NotificationContent) async {}
+}
+
 @MainActor
 @Observable
 public final class PRMonitor {
@@ -28,10 +38,17 @@ public final class PRMonitor {
 
     private let client: any PullRequestSearching
     private let checks: any ChecksFetching
+    private let notifier: any UserNotifier
+    private var lastKnownCIStates: [Int: CIState]?
 
-    public init(client: any PullRequestSearching, checks: any ChecksFetching = NoChecks()) {
+    public init(
+        client: any PullRequestSearching,
+        checks: any ChecksFetching = NoChecks(),
+        notifier: any UserNotifier = SilentNotifier()
+    ) {
         self.client = client
         self.checks = checks
+        self.notifier = notifier
     }
 
     public func poll() async {
@@ -45,7 +62,19 @@ public final class PRMonitor {
             state = .failed
             return
         }
-        ciStates = (try? await checks.ciStates(for: merged)) ?? [:]
+
+        guard let fresh = try? await checks.ciStates(for: merged) else {
+            ciStates = [:]
+            return
+        }
+        ciStates = fresh
+
+        for transition in TransitionDetector.detect(previous: lastKnownCIStates, current: fresh) {
+            if let content = NotificationContent.forCITransition(transition, in: merged) {
+                await notifier.post(content)
+            }
+        }
+        lastKnownCIStates = fresh
     }
 
     public func run(

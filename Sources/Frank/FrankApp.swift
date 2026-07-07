@@ -11,7 +11,8 @@ struct FrankApp: App {
         if let token = try? GitHubToken.fromGhCLI() {
             monitor = PRMonitor(
                 client: GitHubSearchClient(token: token),
-                checks: GitHubChecksClient(token: token)
+                checks: GitHubChecksClient(token: token),
+                notifier: UNNotifier()
             )
         } else {
             monitor = PRMonitor(client: UnauthenticatedClient())
@@ -56,6 +57,16 @@ private struct FrankMenuBarLabel: View {
                 Text(text)
             }
         }
-        .task { await monitor.run() }
+        .task {
+            await UNNotifier.requestPermission()
+            if ProcessInfo.processInfo.environment["FRANK_TEST_NOTIFICATION"] != nil {
+                await UNNotifier().post(NotificationContent(
+                    title: "🐢 Frank is watching",
+                    body: "Notification plumbing works",
+                    url: URL(string: "https://github.com")!
+                ))
+            }
+            await monitor.run()
+        }
     }
 }
