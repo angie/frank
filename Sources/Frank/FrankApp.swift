@@ -31,17 +31,7 @@ struct FrankApp: App {
             Text(MenuBarSummary.menuHeadline(for: monitor.state))
             if case .loaded(let pullRequests) = monitor.state, !pullRequests.isEmpty {
                 Divider()
-                ForEach(MenuRow.rows(for: pullRequests, ciStates: monitor.ciStates)) { row in
-                    Button {
-                        NSWorkspace.shared.open(row.url)
-                    } label: {
-                        if let symbol = row.ciSymbolName {
-                            Label(row.text, systemImage: symbol)
-                        } else {
-                            Text(row.text)
-                        }
-                    }
-                }
+                ForEach(MenuRow.rows(for: pullRequests, ciStates: monitor.ciStates)) { PRRowButton(row: $0) }
             }
             Divider()
             Button("Refresh Now") { Task { await monitor.poll() } }
@@ -52,11 +42,28 @@ struct FrankApp: App {
     }
 }
 
+private struct PRRowButton: View {
+    let row: MenuRow
+
+    var body: some View {
+        Button {
+            NSWorkspace.shared.open(row.url)
+        } label: {
+            if let symbol = row.ciSymbolName {
+                Label(row.text, systemImage: symbol)
+            } else {
+                Text(row.text)
+            }
+        }
+    }
+}
+
 private struct FrankMenuBarLabel: View {
     let monitor: PRMonitor
 
     private var tortoiseSymbol: String {
-        AggregateState.compute(from: monitor.statuses) == .calm ? "tortoise" : "tortoise.fill"
+        let aggregate = AggregateState.compute(from: monitor.statuses, authoredIDs: monitor.authoredIDs)
+        return aggregate == .calm ? "tortoise" : "tortoise.fill"
     }
 
     var body: some View {

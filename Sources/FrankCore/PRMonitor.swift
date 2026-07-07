@@ -36,6 +36,7 @@ public final class PRMonitor {
 
     public private(set) var state: PollState = .idle
     public private(set) var statuses: [Int: PRChecks] = [:]
+    public private(set) var authoredIDs: Set<Int> = []
 
     public var ciStates: [Int: CIState] { statuses.mapValues(\.ci) }
 
@@ -70,7 +71,9 @@ public final class PRMonitor {
         do {
             async let authored = client.openAuthoredPullRequests()
             async let commented = client.openCommentedPullRequests()
-            merged = PRScope.merge(authored: try await authored, commented: try await commented)
+            let mine = try await authored
+            merged = PRScope.merge(authored: mine, commented: try await commented)
+            authoredIDs = Set(mine.map(\.id))
             state = .loaded(merged)
         } catch {
             state = .failed

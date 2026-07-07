@@ -388,6 +388,21 @@ struct PollingTests {
         #expect(store.saved == [fresh])
     }
 
+    @MainActor
+    @Test("poll publishes which tracked PRs I authored")
+    func pollPublishesAuthoredIDs() async {
+        let authored = makePullRequest(id: 1)
+        let commented = makePullRequest(id: 2)
+        let monitor = PRMonitor(client: FakeSearchClient(
+            authored: .success([authored]),
+            commented: .success([commented])
+        ))
+
+        await monitor.poll()
+
+        #expect(monitor.authoredIDs == [1])
+    }
+
     @Test("the default digest interval is thirty minutes")
     func defaultDigestIntervalIsThirtyMinutes() {
         #expect(PRMonitor.defaultDigestInterval == .seconds(1800))
