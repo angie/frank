@@ -43,10 +43,14 @@ public enum ReviewDecision: Equatable, Sendable {
 public struct PRChecks: Equatable, Sendable {
     public let ci: CIState
     public let review: ReviewDecision
+    public let commentCount: Int
+    public let recentCommenters: [String]
 
-    public init(ci: CIState, review: ReviewDecision) {
+    public init(ci: CIState, review: ReviewDecision, commentCount: Int = 0, recentCommenters: [String] = []) {
         self.ci = ci
         self.review = review
+        self.commentCount = commentCount
+        self.recentCommenters = recentCommenters
     }
 }
 
@@ -59,6 +63,7 @@ public enum ChecksQuery {
             return """
             pr\(index): repository(owner: "\(owner)", name: "\(name)") { pullRequest(number: \(pr.number)) { \
             reviewDecision \
+            comments(last: 10) { totalCount nodes { author { login } } } \
             commits(last: 1) { nodes { commit { statusCheckRollup { state } } } } } }
             """
         }
@@ -77,7 +82,21 @@ public enum ChecksResponse {
 
     private struct PR: Decodable {
         let reviewDecision: String?
+        let comments: Comments?
         let commits: Commits
+    }
+
+    private struct Comments: Decodable {
+        let totalCount: Int
+        let nodes: [CommentNode]
+    }
+
+    private struct CommentNode: Decodable {
+        let author: Author?
+    }
+
+    private struct Author: Decodable {
+        let login: String
     }
 
     private struct Commits: Decodable {
@@ -104,7 +123,9 @@ public enum ChecksResponse {
             let rollup = pr?.commits.nodes.first?.commit.statusCheckRollup
             statuses[id] = PRChecks(
                 ci: rollup.map { CIState(rollupState: $0.state) } ?? .noChecks,
-                review: ReviewDecision(graphQL: pr?.reviewDecision)
+                review: ReviewDecision(graphQL: pr?.reviewDecision),
+                commentCount: pr?.comments?.totalCount ?? 0,
+                recentCommenters: pr?.comments?.nodes.compactMap(\.author?.login) ?? []
             )
         }
         return statuses

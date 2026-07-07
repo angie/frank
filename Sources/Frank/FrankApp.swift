@@ -12,7 +12,8 @@ struct FrankApp: App {
             monitor = PRMonitor(
                 client: GitHubSearchClient(token: token),
                 checks: GitHubChecksClient(token: token),
-                notifier: UNNotifier()
+                notifier: UNNotifier(),
+                selfLogin: GitHubViewer.login()
             )
         } else {
             monitor = PRMonitor(client: UnauthenticatedClient())

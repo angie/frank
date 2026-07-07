@@ -50,11 +50,11 @@ struct GitHubChecksClient: ChecksFetching {
     }
 }
 
-enum GitHubToken {
-    static func fromGhCLI() throws -> String {
+enum GitHubCLI {
+    static func run(_ arguments: [String]) throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["gh", "auth", "token"]
+        process.arguments = ["gh"] + arguments
         let stdout = Pipe()
         process.standardOutput = stdout
         process.standardError = Pipe()
@@ -62,11 +62,23 @@ enum GitHubToken {
         process.waitUntilExit()
 
         let output = String(decoding: stdout.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-        let token = output.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard process.terminationStatus == 0, !token.isEmpty else {
+        let result = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard process.terminationStatus == 0, !result.isEmpty else {
             throw URLError(.userAuthenticationRequired)
         }
-        return token
+        return result
+    }
+}
+
+enum GitHubToken {
+    static func fromGhCLI() throws -> String {
+        try GitHubCLI.run(["auth", "token"])
+    }
+}
+
+enum GitHubViewer {
+    static func login() -> String? {
+        try? GitHubCLI.run(["api", "user", "--jq", ".login"])
     }
 }
 

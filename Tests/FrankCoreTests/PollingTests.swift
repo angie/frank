@@ -266,6 +266,58 @@ struct PollingTests {
         #expect(posted.first?.title == "👍 Approved")
     }
 
+    @MainActor
+    @Test("foreign comments batch into one digest banner when the window elapses")
+    func commentsDigestIntoOneBanner() async {
+        let pr = makePullRequest(id: 1)
+        let notifier = SpyNotifier()
+        let quiet = PRChecks(ci: .passing, review: .noDecision, commentCount: 0, recentCommenters: [])
+        let chatty = PRChecks(ci: .passing, review: .noDecision, commentCount: 2, recentCommenters: ["sam", "kit"])
+        let monitor = PRMonitor(
+            client: FakeSearchClient(result: .success([pr])),
+            checks: FakeChecksClient(results: [.success([1: quiet]), .success([1: chatty]), .success([1: chatty])]),
+            notifier: notifier,
+            selfLogin: "angie"
+        )
+        let start = Date(timeIntervalSince1970: 1_780_000_000)
+
+        await monitor.poll(now: start)
+        await monitor.poll(now: start + 60)
+        #expect(await notifier.posted.isEmpty)
+
+        await monitor.poll(now: start + 1800)
+        let posted = await notifier.posted
+        #expect(posted.count == 1)
+        #expect(posted.first?.title == "💬 2 new comments on 1 PR")
+    }
+
+    @MainActor
+    @Test("my own comments never produce a digest")
+    func ownCommentsNeverDigest() async {
+        let pr = makePullRequest(id: 1)
+        let notifier = SpyNotifier()
+        let quiet = PRChecks(ci: .passing, review: .noDecision, commentCount: 0, recentCommenters: [])
+        let mine = PRChecks(ci: .passing, review: .noDecision, commentCount: 1, recentCommenters: ["angie"])
+        let monitor = PRMonitor(
+            client: FakeSearchClient(result: .success([pr])),
+            checks: FakeChecksClient(results: [.success([1: quiet]), .success([1: mine]), .success([1: mine])]),
+            notifier: notifier,
+            selfLogin: "angie"
+        )
+        let start = Date(timeIntervalSince1970: 1_780_000_000)
+
+        await monitor.poll(now: start)
+        await monitor.poll(now: start + 60)
+        await monitor.poll(now: start + 1800)
+
+        #expect(await notifier.posted.isEmpty)
+    }
+
+    @Test("the default digest interval is thirty minutes")
+    func defaultDigestIntervalIsThirtyMinutes() {
+        #expect(PRMonitor.defaultDigestInterval == .seconds(1800))
+    }
+
     @Test("the default poll interval is sixty seconds")
     func defaultIntervalIsSixtySeconds() {
         #expect(PRMonitor.defaultInterval == .seconds(60))

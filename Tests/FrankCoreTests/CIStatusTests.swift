@@ -93,5 +93,36 @@ struct CIStatusTests {
         #expect(query.contains(#"pr1: repository(owner: "octo-org", name: "my.repo") { pullRequest(number: 7)"#))
         #expect(query.contains("statusCheckRollup"))
         #expect(query.contains("reviewDecision"))
+        #expect(query.contains("comments(last: 10) { totalCount nodes { author { login } } }"))
+    }
+
+    @Test("a checks response decodes comment counts and recent commenters")
+    func decodesComments() throws {
+        let data = Data("""
+        {"data": {
+            "pr0": {"pullRequest": {
+                "reviewDecision": null,
+                "comments": {"totalCount": 7, "nodes": [{"author": {"login": "sam"}}, {"author": null}, {"author": {"login": "kit"}}]},
+                "commits": {"nodes": [{"commit": {"statusCheckRollup": {"state": "SUCCESS"}}}]}
+            }}
+        }}
+        """.utf8)
+
+        let statuses = try ChecksResponse.statuses(from: data, orderedIDs: [111])
+
+        #expect(statuses[111]?.commentCount == 7)
+        #expect(statuses[111]?.recentCommenters == ["sam", "kit"])
+    }
+
+    @Test("missing comments decode as zero with no commenters")
+    func missingCommentsDecodeAsZero() throws {
+        let data = Data("""
+        {"data": {"pr0": {"pullRequest": null}}}
+        """.utf8)
+
+        let statuses = try ChecksResponse.statuses(from: data, orderedIDs: [1])
+
+        #expect(statuses[1]?.commentCount == 0)
+        #expect(statuses[1]?.recentCommenters == [])
     }
 }

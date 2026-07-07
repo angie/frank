@@ -32,6 +32,7 @@ public struct SilentNotifier: UserNotifier {
 @Observable
 public final class PRMonitor {
     public nonisolated static let defaultInterval: Duration = .seconds(60)
+    public nonisolated static let defaultDigestInterval: Duration = .seconds(1800)
 
     public private(set) var state: PollState = .idle
     public private(set) var statuses: [Int: PRChecks] = [:]
@@ -41,19 +42,26 @@ public final class PRMonitor {
     private let client: any PullRequestSearching
     private let checks: any ChecksFetching
     private let notifier: any UserNotifier
+    private let selfLogin: String?
+    private let digestInterval: Duration
     private var lastKnown: [Int: PRChecks]?
+    private var digest: DigestBuffer?
 
     public init(
         client: any PullRequestSearching,
         checks: any ChecksFetching = NoChecks(),
-        notifier: any UserNotifier = SilentNotifier()
+        notifier: any UserNotifier = SilentNotifier(),
+        selfLogin: String? = nil,
+        digestInterval: Duration = PRMonitor.defaultDigestInterval
     ) {
         self.client = client
         self.checks = checks
         self.notifier = notifier
+        self.selfLogin = selfLogin
+        self.digestInterval = digestInterval
     }
 
-    public func poll() async {
+    public func poll(now: Date = Date()) async {
         let merged: [PullRequest]
         do {
             async let authored = client.openAuthoredPullRequests()
@@ -85,6 +93,18 @@ public final class PRMonitor {
                 await notifier.post(content)
             }
         }
+
+        var buffer = digest ?? DigestBuffer(now: now)
+        buffer.add(CommentTracker.newForeignComments(
+            previous: lastKnown?.mapValues(\.commentCount),
+            current: fresh,
+            selfLogin: selfLogin
+        ))
+        if let content = buffer.flushIfDue(now: now, interval: digestInterval, in: merged) {
+            await notifier.post(content)
+        }
+        digest = buffer
+
         lastKnown = fresh
     }
 
