@@ -24,7 +24,27 @@ public struct NotificationContent: Equatable, Sendable {
             return nil
         }
 
+        return NotificationContent(title: title, body: body(for: pr), url: pr.htmlURL)
+    }
+
+    public static func forReviewTransition(_ transition: ReviewTransition, in pullRequests: [PullRequest]) -> NotificationContent? {
+        guard let pr = pullRequests.first(where: { $0.id == transition.pullRequestID }) else { return nil }
+
+        let title: String
+        switch transition.to {
+        case .approved:
+            title = "👍 Approved"
+        case .changesRequested:
+            title = "🔄 Changes requested"
+        case .awaitingReview, .noDecision:
+            return nil
+        }
+
+        return NotificationContent(title: title, body: body(for: pr), url: pr.htmlURL)
+    }
+
+    private static func body(for pr: PullRequest) -> String {
         let shortName = pr.repositoryFullName.components(separatedBy: "/").last ?? pr.repositoryFullName
-        return NotificationContent(title: title, body: "\(shortName)#\(pr.number) · \(pr.title)", url: pr.htmlURL)
+        return "\(shortName)#\(pr.number) · \(pr.title)"
     }
 }

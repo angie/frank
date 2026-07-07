@@ -28,18 +28,22 @@ private actor FakeSearchClient: PullRequestSearching {
     }
 }
 
-private actor FakeChecksClient: ChecksFetching {
-    private var results: [Result<[Int: CIState], Error>]
+private func checks(_ ci: CIState, review: ReviewDecision = .noDecision) -> PRChecks {
+    PRChecks(ci: ci, review: review)
+}
 
-    init(result: Result<[Int: CIState], Error>) {
+private actor FakeChecksClient: ChecksFetching {
+    private var results: [Result<[Int: PRChecks], Error>]
+
+    init(result: Result<[Int: PRChecks], Error>) {
         self.results = [result]
     }
 
-    init(results: [Result<[Int: CIState], Error>]) {
+    init(results: [Result<[Int: PRChecks], Error>]) {
         self.results = results
     }
 
-    func ciStates(for pullRequests: [PullRequest]) async throws -> [Int: CIState] {
+    func statuses(for pullRequests: [PullRequest]) async throws -> [Int: PRChecks] {
         let result = results.count > 1 ? results.removeFirst() : results[0]
         return try result.get().filter { id, _ in pullRequests.contains { $0.id == id } }
     }
@@ -140,7 +144,7 @@ struct PollingTests {
         let commented = makePullRequest(id: 2)
         let monitor = PRMonitor(
             client: FakeSearchClient(authored: .success([authored]), commented: .success([commented])),
-            checks: FakeChecksClient(result: .success([1: .passing, 2: .failing]))
+            checks: FakeChecksClient(result: .success([1: checks(.passing), 2: checks(.failing)]))
         )
 
         await monitor.poll()
@@ -170,7 +174,7 @@ struct PollingTests {
         let notifier = SpyNotifier()
         let monitor = PRMonitor(
             client: FakeSearchClient(result: .success([pr])),
-            checks: FakeChecksClient(results: [.success([1: .passing]), .success([1: .failing])]),
+            checks: FakeChecksClient(results: [.success([1: checks(.passing)]), .success([1: checks(.failing)])]),
             notifier: notifier
         )
 
@@ -188,7 +192,7 @@ struct PollingTests {
         let notifier = SpyNotifier()
         let monitor = PRMonitor(
             client: FakeSearchClient(result: .success([makePullRequest(id: 1)])),
-            checks: FakeChecksClient(result: .success([1: .failing])),
+            checks: FakeChecksClient(result: .success([1: checks(.failing)])),
             notifier: notifier
         )
 
@@ -203,7 +207,7 @@ struct PollingTests {
         let notifier = SpyNotifier()
         let monitor = PRMonitor(
             client: FakeSearchClient(result: .success([makePullRequest(id: 1)])),
-            checks: FakeChecksClient(result: .success([1: .failing])),
+            checks: FakeChecksClient(result: .success([1: checks(.failing)])),
             notifier: notifier
         )
 
@@ -222,9 +226,9 @@ struct PollingTests {
         let monitor = PRMonitor(
             client: FakeSearchClient(result: .success([pr])),
             checks: FakeChecksClient(results: [
-                .success([1: .passing]),
+                .success([1: checks(.passing)]),
                 .failure(StubError()),
-                .success([1: .failing]),
+                .success([1: checks(.failing)]),
             ]),
             notifier: notifier
         )
@@ -236,6 +240,30 @@ struct PollingTests {
         let posted = await notifier.posted
         #expect(posted.count == 1)
         #expect(posted.first?.title == "❌ CI failing")
+    }
+
+    @MainActor
+    @Test("an approval between polls posts exactly one banner")
+    func approvalPostsExactlyOneBanner() async {
+        let pr = makePullRequest(id: 1)
+        let notifier = SpyNotifier()
+        let monitor = PRMonitor(
+            client: FakeSearchClient(result: .success([pr])),
+            checks: FakeChecksClient(results: [
+                .success([1: checks(.passing, review: .awaitingReview)]),
+                .success([1: checks(.passing, review: .approved)]),
+                .success([1: checks(.passing, review: .approved)]),
+            ]),
+            notifier: notifier
+        )
+
+        await monitor.poll()
+        await monitor.poll()
+        await monitor.poll()
+
+        let posted = await notifier.posted
+        #expect(posted.count == 1)
+        #expect(posted.first?.title == "👍 Approved")
     }
 
     @Test("the default poll interval is sixty seconds")

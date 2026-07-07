@@ -34,7 +34,7 @@ struct GitHubSearchClient: PullRequestSearching {
 struct GitHubChecksClient: ChecksFetching {
     let token: String
 
-    func ciStates(for pullRequests: [PullRequest]) async throws -> [Int: CIState] {
+    func statuses(for pullRequests: [PullRequest]) async throws -> [Int: PRChecks] {
         guard !pullRequests.isEmpty else { return [:] }
         var request = URLRequest(url: URL(string: "https://api.github.com/graphql")!)
         request.httpMethod = "POST"
@@ -46,7 +46,7 @@ struct GitHubChecksClient: ChecksFetching {
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw URLError(.badServerResponse)
         }
-        return try ChecksResponse.states(from: data, orderedIDs: pullRequests.map(\.id))
+        return try ChecksResponse.statuses(from: data, orderedIDs: pullRequests.map(\.id))
     }
 }
 

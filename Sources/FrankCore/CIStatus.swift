@@ -20,6 +20,36 @@ public enum CIState: Equatable, Sendable {
     }
 }
 
+public enum ReviewDecision: Equatable, Sendable {
+    case approved
+    case changesRequested
+    case awaitingReview
+    case noDecision
+
+    public init(graphQL: String?) {
+        switch graphQL {
+        case "APPROVED":
+            self = .approved
+        case "CHANGES_REQUESTED":
+            self = .changesRequested
+        case "REVIEW_REQUIRED":
+            self = .awaitingReview
+        default:
+            self = .noDecision
+        }
+    }
+}
+
+public struct PRChecks: Equatable, Sendable {
+    public let ci: CIState
+    public let review: ReviewDecision
+
+    public init(ci: CIState, review: ReviewDecision) {
+        self.ci = ci
+        self.review = review
+    }
+}
+
 public enum ChecksQuery {
     public static func build(for pullRequests: [PullRequest]) -> String {
         let blocks = pullRequests.enumerated().map { index, pr -> String in
@@ -28,6 +58,7 @@ public enum ChecksQuery {
             let name = parts.count > 1 ? String(parts[1]) : ""
             return """
             pr\(index): repository(owner: "\(owner)", name: "\(name)") { pullRequest(number: \(pr.number)) { \
+            reviewDecision \
             commits(last: 1) { nodes { commit { statusCheckRollup { state } } } } } }
             """
         }
@@ -45,6 +76,7 @@ public enum ChecksResponse {
     }
 
     private struct PR: Decodable {
+        let reviewDecision: String?
         let commits: Commits
     }
 
@@ -64,13 +96,17 @@ public enum ChecksResponse {
         let state: String
     }
 
-    public static func states(from data: Data, orderedIDs: [Int]) throws -> [Int: CIState] {
+    public static func statuses(from data: Data, orderedIDs: [Int]) throws -> [Int: PRChecks] {
         let payload = try JSONDecoder().decode(Payload.self, from: data)
-        var states: [Int: CIState] = [:]
+        var statuses: [Int: PRChecks] = [:]
         for (index, id) in orderedIDs.enumerated() {
-            let rollup = payload.data["pr\(index)"]??.pullRequest?.commits.nodes.first?.commit.statusCheckRollup
-            states[id] = rollup.map { CIState(rollupState: $0.state) } ?? .noChecks
+            let pr = payload.data["pr\(index)"]??.pullRequest
+            let rollup = pr?.commits.nodes.first?.commit.statusCheckRollup
+            statuses[id] = PRChecks(
+                ci: rollup.map { CIState(rollupState: $0.state) } ?? .noChecks,
+                review: ReviewDecision(graphQL: pr?.reviewDecision)
+            )
         }
-        return states
+        return statuses
     }
 }

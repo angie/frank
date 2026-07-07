@@ -7,13 +7,13 @@ public protocol PullRequestSearching: Sendable {
 }
 
 public protocol ChecksFetching: Sendable {
-    func ciStates(for pullRequests: [PullRequest]) async throws -> [Int: CIState]
+    func statuses(for pullRequests: [PullRequest]) async throws -> [Int: PRChecks]
 }
 
 public struct NoChecks: ChecksFetching {
     public init() {}
 
-    public func ciStates(for pullRequests: [PullRequest]) async throws -> [Int: CIState] {
+    public func statuses(for pullRequests: [PullRequest]) async throws -> [Int: PRChecks] {
         [:]
     }
 }
@@ -34,12 +34,14 @@ public final class PRMonitor {
     public nonisolated static let defaultInterval: Duration = .seconds(60)
 
     public private(set) var state: PollState = .idle
-    public private(set) var ciStates: [Int: CIState] = [:]
+    public private(set) var statuses: [Int: PRChecks] = [:]
+
+    public var ciStates: [Int: CIState] { statuses.mapValues(\.ci) }
 
     private let client: any PullRequestSearching
     private let checks: any ChecksFetching
     private let notifier: any UserNotifier
-    private var lastKnownCIStates: [Int: CIState]?
+    private var lastKnown: [Int: PRChecks]?
 
     public init(
         client: any PullRequestSearching,
@@ -63,18 +65,27 @@ public final class PRMonitor {
             return
         }
 
-        guard let fresh = try? await checks.ciStates(for: merged) else {
-            ciStates = [:]
+        guard let fresh = try? await checks.statuses(for: merged) else {
+            statuses = [:]
             return
         }
-        ciStates = fresh
+        statuses = fresh
 
-        for transition in TransitionDetector.detect(previous: lastKnownCIStates, current: fresh) {
+        for transition in TransitionDetector.detect(
+            previous: lastKnown?.mapValues(\.ci), current: fresh.mapValues(\.ci)
+        ) {
             if let content = NotificationContent.forCITransition(transition, in: merged) {
                 await notifier.post(content)
             }
         }
-        lastKnownCIStates = fresh
+        for transition in TransitionDetector.detectReviews(
+            previous: lastKnown?.mapValues(\.review), current: fresh.mapValues(\.review)
+        ) {
+            if let content = NotificationContent.forReviewTransition(transition, in: merged) {
+                await notifier.post(content)
+            }
+        }
+        lastKnown = fresh
     }
 
     public func run(
