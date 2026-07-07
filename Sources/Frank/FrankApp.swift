@@ -166,6 +166,7 @@ private struct PRRow: View {
                         Text(verbatim: "#\(row.number)")
                             .font(.system(size: 13))
                             .foregroundStyle(.tertiary)
+                        Spacer(minLength: 0)
                     }
                     HStack(spacing: 8) {
                         Text(row.repoShortName)
@@ -181,27 +182,16 @@ private struct PRRow: View {
                         if let age = row.age {
                             Text(age)
                         }
+                        Spacer(minLength: 0)
+                        if let jiraURL = row.jiraURL {
+                            JiraLinkText(url: jiraURL)
+                        }
+                        if !row.checkDetails.isEmpty {
+                            checksCapsule
+                        }
                     }
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 0)
-                if let jiraURL = row.jiraURL {
-                    JiraLinkText(url: jiraURL)
-                }
-                if !row.checkDetails.isEmpty {
-                    Button {
-                        withAnimation(.easeOut(duration: 0.15)) { expanded.toggle() }
-                    } label: {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 18, height: 18)
-                            .background(Circle().fill(Color.primary.opacity(0.06)))
-                            .rotationEffect(expanded ? .degrees(90) : .zero)
-                    }
-                    .buttonStyle(.plain)
-                    .help(expanded ? "Hide checks" : "Show checks")
                 }
             }
             .padding(.horizontal, 8)
@@ -214,6 +204,38 @@ private struct PRRow: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
+    }
+
+    private var checksCapsule: some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.15)) { expanded.toggle() }
+        } label: {
+            HStack(spacing: 4) {
+                HStack(spacing: 3) {
+                    ForEach(Array(row.checkDetails.prefix(6).enumerated()), id: \.offset) { _, check in
+                        Circle()
+                            .fill(dotColor(for: check.state))
+                            .frame(width: 5, height: 5)
+                    }
+                    if row.checkDetails.count > 6 {
+                        Text("+\(row.checkDetails.count - 6)")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                            .fixedSize()
+                    }
+                }
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(expanded ? .degrees(180) : .zero)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(Capsule().fill(Color.primary.opacity(0.08)))
+            .fixedSize()
+        }
+        .buttonStyle(.plain)
+        .help(expanded ? "Hide checks" : "Show checks")
     }
 
     private var checksList: some View {
