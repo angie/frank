@@ -163,7 +163,7 @@ private struct PRRow: View {
                             .font(.system(size: 13, weight: .medium))
                             .lineLimit(1)
                             .truncationMode(.tail)
-                        Text("#\(row.number)")
+                        Text(verbatim: "#\(row.number)")
                             .font(.system(size: 13))
                             .foregroundStyle(.tertiary)
                     }
@@ -194,8 +194,10 @@ private struct PRRow: View {
                         withAnimation(.easeOut(duration: 0.15)) { expanded.toggle() }
                     } label: {
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundStyle(.tertiary)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 18, height: 18)
+                            .background(Circle().fill(Color.primary.opacity(0.06)))
                             .rotationEffect(expanded ? .degrees(90) : .zero)
                     }
                     .buttonStyle(.plain)
