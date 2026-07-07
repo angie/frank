@@ -36,4 +36,24 @@ struct MenuRowsTests {
     func emptyListYieldsNoRows() {
         #expect(MenuRow.rows(for: []).isEmpty)
     }
+
+    @Test("rows carry a CI glyph matching each pull request's state", arguments: [
+        (CIState.passing, "checkmark.circle"),
+        (CIState.failing, "xmark.circle"),
+        (CIState.pending, "clock"),
+    ])
+    func rowsCarryCIGlyph(state: CIState, symbol: String) throws {
+        let rows = MenuRow.rows(for: [makePullRequest(id: 1)], ciStates: [1: state])
+
+        #expect(try #require(rows.first).ciSymbolName == symbol)
+    }
+
+    @Test("no checks and unknown CI state show no glyph")
+    func noChecksShowsNoGlyph() throws {
+        let known = MenuRow.rows(for: [makePullRequest(id: 1)], ciStates: [1: .noChecks])
+        let unknown = MenuRow.rows(for: [makePullRequest(id: 2)])
+
+        #expect(try #require(known.first).ciSymbolName == nil)
+        #expect(try #require(unknown.first).ciSymbolName == nil)
+    }
 }

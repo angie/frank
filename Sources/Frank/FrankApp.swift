@@ -7,9 +7,16 @@ struct FrankApp: App {
     @State private var monitor: PRMonitor
 
     init() {
-        let client: any PullRequestSearching =
-            (try? GitHubToken.fromGhCLI()).map(GitHubSearchClient.init(token:)) ?? UnauthenticatedClient()
-        _monitor = State(initialValue: PRMonitor(client: client))
+        let monitor: PRMonitor
+        if let token = try? GitHubToken.fromGhCLI() {
+            monitor = PRMonitor(
+                client: GitHubSearchClient(token: token),
+                checks: GitHubChecksClient(token: token)
+            )
+        } else {
+            monitor = PRMonitor(client: UnauthenticatedClient())
+        }
+        _monitor = State(initialValue: monitor)
         NSApplication.shared.setActivationPolicy(.accessory)
     }
 
@@ -18,8 +25,16 @@ struct FrankApp: App {
             Text(MenuBarSummary.menuHeadline(for: monitor.state))
             if case .loaded(let pullRequests) = monitor.state, !pullRequests.isEmpty {
                 Divider()
-                ForEach(MenuRow.rows(for: pullRequests)) { row in
-                    Button(row.text) { NSWorkspace.shared.open(row.url) }
+                ForEach(MenuRow.rows(for: pullRequests, ciStates: monitor.ciStates)) { row in
+                    Button {
+                        NSWorkspace.shared.open(row.url)
+                    } label: {
+                        if let symbol = row.ciSymbolName {
+                            Label(row.text, systemImage: symbol)
+                        } else {
+                            Text(row.text)
+                        }
+                    }
                 }
             }
             Divider()

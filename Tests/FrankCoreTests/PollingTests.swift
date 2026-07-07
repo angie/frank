@@ -28,6 +28,14 @@ private actor FakeSearchClient: PullRequestSearching {
     }
 }
 
+private struct FakeChecksClient: ChecksFetching {
+    let result: Result<[Int: CIState], Error>
+
+    func ciStates(for pullRequests: [PullRequest]) async throws -> [Int: CIState] {
+        try result.get().filter { id, _ in pullRequests.contains { $0.id == id } }
+    }
+}
+
 private actor SleepRecorder {
     private(set) var durations: [Duration] = []
     private let failOnCall: Int
@@ -106,6 +114,36 @@ struct PollingTests {
         await monitor.poll()
 
         #expect(monitor.state == .failed)
+    }
+
+    @MainActor
+    @Test("poll publishes CI states for the tracked pull requests")
+    func pollPublishesCIStates() async {
+        let authored = makePullRequest(id: 1)
+        let commented = makePullRequest(id: 2)
+        let monitor = PRMonitor(
+            client: FakeSearchClient(authored: .success([authored]), commented: .success([commented])),
+            checks: FakeChecksClient(result: .success([1: .passing, 2: .failing]))
+        )
+
+        await monitor.poll()
+
+        #expect(monitor.ciStates == [1: .passing, 2: .failing])
+    }
+
+    @MainActor
+    @Test("a failing checks fetch still loads pull requests and clears CI states")
+    func checksFailureStillLoadsPullRequests() async {
+        let pullRequests = [makePullRequest()]
+        let monitor = PRMonitor(
+            client: FakeSearchClient(result: .success(pullRequests)),
+            checks: FakeChecksClient(result: .failure(StubError()))
+        )
+
+        await monitor.poll()
+
+        #expect(monitor.state == .loaded(pullRequests))
+        #expect(monitor.ciStates.isEmpty)
     }
 
     @Test("the default poll interval is sixty seconds")

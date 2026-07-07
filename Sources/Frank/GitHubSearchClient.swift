@@ -31,6 +31,25 @@ struct GitHubSearchClient: PullRequestSearching {
     }
 }
 
+struct GitHubChecksClient: ChecksFetching {
+    let token: String
+
+    func ciStates(for pullRequests: [PullRequest]) async throws -> [Int: CIState] {
+        guard !pullRequests.isEmpty else { return [:] }
+        var request = URLRequest(url: URL(string: "https://api.github.com/graphql")!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(["query": ChecksQuery.build(for: pullRequests)])
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+        return try ChecksResponse.states(from: data, orderedIDs: pullRequests.map(\.id))
+    }
+}
+
 enum GitHubToken {
     static func fromGhCLI() throws -> String {
         let process = Process()
