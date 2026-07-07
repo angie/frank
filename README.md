@@ -53,6 +53,12 @@ Changes follow RED → GREEN → MUTATE → KILL MUTANTS → REFACTOR. Mutation 
 for now: muter v1.3.0 misreports Swift Testing kills as runtime errors (fix pending in
 muter PR #306 — adopt it once released).
 
+## Credits
+
+The app icon's tortoise is a public-domain illustration from
+[Openclipart](https://openclipart.org/detail/2157/tortoise) (CC0). Regenerate the icon
+with `scripts/make-icon.sh`.
+
 ## Later ideas
 
 - A subtle coloured attention dot in the menu bar — `MenuBarExtra` labels fight this:
