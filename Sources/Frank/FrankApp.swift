@@ -6,6 +6,7 @@ import SwiftUI
 struct FrankApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var monitor: PRMonitor
+    @State private var launchAtLogin = LaunchAtLogin(service: SMLoginItemService())
 
     init() {
         let monitor: PRMonitor
@@ -29,7 +30,7 @@ struct FrankApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            FrankPanel(monitor: monitor)
+            FrankPanel(monitor: monitor, launchAtLogin: launchAtLogin)
         } label: {
             FrankMenuBarLabel(monitor: monitor)
         }
@@ -39,6 +40,7 @@ struct FrankApp: App {
 
 private struct FrankPanel: View {
     let monitor: PRMonitor
+    let launchAtLogin: LaunchAtLogin
 
     var body: some View {
         VStack(spacing: 0) {
@@ -97,6 +99,14 @@ private struct FrankPanel: View {
             FooterButton(title: "Refresh Now") {
                 Task { await monitor.poll() }
             }
+            Spacer()
+            Toggle("Launch at Login", isOn: Binding(
+                get: { launchAtLogin.isEnabled },
+                set: { launchAtLogin.setEnabled($0) }
+            ))
+            .toggleStyle(.checkbox)
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
             Spacer()
             FooterButton(title: "Quit Frank") {
                 NSApp.terminate(nil)
