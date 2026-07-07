@@ -1,5 +1,14 @@
 import Foundation
 
+public struct MenuSections: Equatable, Sendable {
+    public let mine: [MenuRow]
+    public let watching: [MenuRow]
+
+    public static func compute(for pullRequests: [PullRequest], ciStates: [Int: CIState], authoredIDs: Set<Int>) -> MenuSections {
+        MenuRow.sections(for: pullRequests, ciStates: ciStates, authoredIDs: authoredIDs)
+    }
+}
+
 public struct MenuRow: Equatable, Sendable, Identifiable {
     public let id: Int
     public let text: String
@@ -18,6 +27,20 @@ public struct MenuRow: Equatable, Sendable, Identifiable {
                     ciSymbolName: symbolName(for: ciStates[pr.id] ?? .noChecks)
                 )
             }
+    }
+
+    public static func sections(for pullRequests: [PullRequest], ciStates: [Int: CIState], authoredIDs: Set<Int>) -> MenuSections {
+        let (mine, watching) = pullRequests.reduce(into: ([PullRequest](), [PullRequest]())) { result, pr in
+            if authoredIDs.contains(pr.id) {
+                result.0.append(pr)
+            } else {
+                result.1.append(pr)
+            }
+        }
+        return MenuSections(
+            mine: rows(for: mine, ciStates: ciStates),
+            watching: rows(for: watching, ciStates: ciStates)
+        )
     }
 
     private static func symbolName(for state: CIState) -> String? {

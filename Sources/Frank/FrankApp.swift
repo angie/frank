@@ -30,8 +30,21 @@ struct FrankApp: App {
         MenuBarExtra {
             Text(MenuBarSummary.menuHeadline(for: monitor.state))
             if case .loaded(let pullRequests) = monitor.state, !pullRequests.isEmpty {
-                Divider()
-                ForEach(MenuRow.rows(for: pullRequests, ciStates: monitor.ciStates)) { PRRowButton(row: $0) }
+                let sections = MenuSections.compute(
+                    for: pullRequests,
+                    ciStates: monitor.ciStates,
+                    authoredIDs: monitor.authoredIDs
+                )
+                if !sections.mine.isEmpty {
+                    Section("Mine") {
+                        ForEach(sections.mine) { PRRowButton(row: $0) }
+                    }
+                }
+                if !sections.watching.isEmpty {
+                    Section("Watching") {
+                        ForEach(sections.watching) { PRRowButton(row: $0) }
+                    }
+                }
             }
             Divider()
             Button("Refresh Now") { Task { await monitor.poll() } }

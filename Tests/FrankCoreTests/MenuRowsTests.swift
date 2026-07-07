@@ -48,6 +48,40 @@ struct MenuRowsTests {
         #expect(try #require(rows.first).ciSymbolName == symbol)
     }
 
+    @Test("rows split into mine and watching by authorship")
+    func sectionsSplitByAuthorship() {
+        let mine = makePullRequest(id: 1, number: 1)
+        let watched = makePullRequest(id: 2, number: 2)
+
+        let sections = MenuSections.compute(for: [mine, watched], ciStates: [:], authoredIDs: [1])
+
+        #expect(sections.mine.map(\.id) == [1])
+        #expect(sections.watching.map(\.id) == [2])
+    }
+
+    @Test("each section stays sorted by most recent activity")
+    func sectionsStaySorted() {
+        let older = makePullRequest(id: 1, updatedAt: Date(timeIntervalSince1970: 1_000))
+        let newer = makePullRequest(id: 2, updatedAt: Date(timeIntervalSince1970: 2_000))
+        let watched = makePullRequest(id: 3)
+
+        let sections = MenuSections.compute(for: [older, watched, newer], ciStates: [:], authoredIDs: [1, 2])
+
+        #expect(sections.mine.map(\.id) == [2, 1])
+        #expect(sections.watching.map(\.id) == [3])
+    }
+
+    @Test("sections carry CI glyphs through")
+    func sectionsCarryGlyphs() throws {
+        let sections = MenuSections.compute(
+            for: [makePullRequest(id: 1)],
+            ciStates: [1: .failing],
+            authoredIDs: [1]
+        )
+
+        #expect(try #require(sections.mine.first).ciSymbolName == "xmark.circle")
+    }
+
     @Test("no checks and unknown CI state show no glyph")
     func noChecksShowsNoGlyph() throws {
         let known = MenuRow.rows(for: [makePullRequest(id: 1)], ciStates: [1: .noChecks])
