@@ -1,9 +1,9 @@
 import AppKit
-import LanternCore
+import FrankCore
 import SwiftUI
 
 @main
-struct LanternApp: App {
+struct FrankApp: App {
     @State private var monitor: PRMonitor
 
     init() {
@@ -15,33 +15,28 @@ struct LanternApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            switch monitor.state {
-            case .idle:
-                Text("Checking GitHub…")
-            case .failed:
-                Text("Couldn't reach GitHub")
-            case .loaded(let pullRequests) where pullRequests.isEmpty:
-                Text("No open pull requests")
-            case .loaded(let pullRequests):
+            Text(MenuBarSummary.menuHeadline(for: monitor.state))
+            if case .loaded(let pullRequests) = monitor.state, !pullRequests.isEmpty {
+                Divider()
                 ForEach(MenuRow.rows(for: pullRequests)) { row in
                     Button(row.text) { NSWorkspace.shared.open(row.url) }
                 }
             }
             Divider()
             Button("Refresh Now") { Task { await monitor.poll() } }
-            Button("Quit Lantern") { NSApp.terminate(nil) }
+            Button("Quit Frank") { NSApp.terminate(nil) }
         } label: {
-            LanternMenuBarLabel(monitor: monitor)
+            FrankMenuBarLabel(monitor: monitor)
         }
     }
 }
 
-private struct LanternMenuBarLabel: View {
+private struct FrankMenuBarLabel: View {
     let monitor: PRMonitor
 
     var body: some View {
         HStack(spacing: 2) {
-            Image(systemName: "light.beacon.max")
+            Image(systemName: "tortoise")
             if let text = MenuBarSummary.labelText(for: monitor.state) {
                 Text(text)
             }

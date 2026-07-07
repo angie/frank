@@ -1,5 +1,5 @@
 import Foundation
-import LanternCore
+import FrankCore
 
 struct GitHubSearchClient: PullRequestSearching {
     let token: String

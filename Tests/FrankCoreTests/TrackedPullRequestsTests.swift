@@ -1,5 +1,5 @@
 import Foundation
-import LanternCore
+import FrankCore
 import Testing
 
 @Suite("Tracked pull requests")

@@ -1,5 +1,5 @@
 import Foundation
-import LanternCore
+import FrankCore
 import Testing
 
 private struct StubError: Error {}

@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "Lantern",
+    name: "Frank",
     platforms: [.macOS(.v15)],
     targets: [
-        .target(name: "LanternCore"),
-        .executableTarget(name: "Lantern", dependencies: ["LanternCore"]),
-        .testTarget(name: "LanternCoreTests", dependencies: ["LanternCore"]),
+        .target(name: "FrankCore"),
+        .executableTarget(name: "Frank", dependencies: ["FrankCore"]),
+        .testTarget(name: "FrankCoreTests", dependencies: ["FrankCore"]),
     ]
 )

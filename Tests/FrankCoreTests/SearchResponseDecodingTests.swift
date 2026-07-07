@@ -1,8 +1,8 @@
 import Foundation
-import LanternCore
+import FrankCore
 import Testing
 
-private func searchResponseData(repositoryURL: String = "https://api.github.com/repos/angie/pr-lantern") -> Data {
+private func searchResponseData(repositoryURL: String = "https://api.github.com/repos/angie/pr-frank") -> Data {
     Data("""
     {
       "total_count": 2,
@@ -12,10 +12,10 @@ private func searchResponseData(repositoryURL: String = "https://api.github.com/
           "id": 111,
           "number": 42,
           "title": "Add mindful notifications",
-          "html_url": "https://github.com/angie/pr-lantern/pull/42",
+          "html_url": "https://github.com/angie/pr-frank/pull/42",
           "repository_url": "\(repositoryURL)",
           "updated_at": "2026-07-01T10:00:00Z",
-          "pull_request": { "url": "https://api.github.com/repos/angie/pr-lantern/pulls/42" }
+          "pull_request": { "url": "https://api.github.com/repos/angie/pr-frank/pulls/42" }
         },
         {
           "id": 222,
@@ -47,8 +47,8 @@ struct SearchResponseDecodingTests {
         #expect(first.id == 111)
         #expect(first.number == 42)
         #expect(first.title == "Add mindful notifications")
-        #expect(first.repositoryFullName == "angie/pr-lantern")
-        #expect(first.htmlURL == URL(string: "https://github.com/angie/pr-lantern/pull/42"))
+        #expect(first.repositoryFullName == "angie/pr-frank")
+        #expect(first.htmlURL == URL(string: "https://github.com/angie/pr-frank/pull/42"))
         #expect(first.updatedAt == isoDate("2026-07-01T10:00:00Z"))
 
         let second = try #require(response.items.last)
@@ -60,7 +60,7 @@ struct SearchResponseDecodingTests {
 
     @Test("a repository_url without a /repos/ path is rejected")
     func rejectsRepositoryURLWithoutReposPath() {
-        let data = searchResponseData(repositoryURL: "https://api.github.com/not-repos/angie/pr-lantern")
+        let data = searchResponseData(repositoryURL: "https://api.github.com/not-repos/angie/pr-frank")
         #expect(throws: DecodingError.self) {
             try GitHubSearchResponse.decode(data)
         }

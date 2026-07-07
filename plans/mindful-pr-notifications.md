@@ -1,4 +1,4 @@
-# Plan: Mindful PR Notifications (Lantern)
+# Plan: Mindful PR Notifications (Frank)
 
 **Branch**: main (trunk-based; one slice = one small merge to main)
 **Status**: Active
@@ -9,14 +9,14 @@ A calm macOS menu bar app that watches GitHub PRs I authored or commented on, an
 
 ## Context & Decisions
 
-- **Stack**: Swift 6.2 + SwiftUI `MenuBarExtra`. Core logic lives in an SPM library target (`LanternCore`) tested with `swift test`; the app shell (`Lantern` executable target) stays thin.
+- **Stack**: Swift 6.2 + SwiftUI `MenuBarExtra`. Core logic lives in an SPM library target (`FrankCore`) tested with `swift test`; the app shell (`Frank` executable target) stays thin.
 - **Data**: Poll GitHub every ~60s using the token from `gh auth token` (already authenticated as `angie`, repo scope). REST search API for PR discovery; GraphQL `statusCheckRollup` once CI state is needed.
 - **PR scope**: `is:pr is:open author:@me` plus `is:pr is:open commenter:@me`, deduped.
 - **Philosophy**: tiered urgency. Immediate: CI pass→fail / fail→pass, approval, changes-requested. Digest: comments. Notify on transitions only; the menu bar glyph reflects aggregate state at all times.
-- **Known constraint**: the app must run from a real `.app` bundle. `UNUserNotificationCenter` requires one, and on macOS 26 a bare SPM executable's status item did not appear in our testing. `scripts/make-app.sh` (added during slice 1) wraps the build in a minimal bundle (Info.plist, `LSUIElement`, ad-hoc codesign); launch with `scripts/make-app.sh && open .build/Lantern.app`.
-- **Menu bar managers**: Barbee hides new status items by default (parks them off-screen, x ≈ -8400). Verify presence via Accessibility (`menu bar 2` of the app's process in System Events), not by screenshot alone; pin Lantern visible in Barbee.
+- **Known constraint**: the app must run from a real `.app` bundle. `UNUserNotificationCenter` requires one, and on macOS 26 a bare SPM executable's status item did not appear in our testing. `scripts/make-app.sh` (added during slice 1) wraps the build in a minimal bundle (Info.plist, `LSUIElement`, ad-hoc codesign); launch with `scripts/make-app.sh && open .build/Frank.app`.
+- **Menu bar managers**: Barbee hides new status items by default (parks them off-screen, x ≈ -8400). Verify presence via Accessibility (`menu bar 2` of the app's process in System Events), not by screenshot alone; pin Frank visible in Barbee.
 - **Mutation testing**: muter v1.3.0 misreports Swift Testing kills as `runtimeError` (XCTest-only output regex; fix open as muter PR #306, June 2026). Use manual mutation per the `mutation-testing` skill; re-check #306 at each MUTATE phase and adopt muter once a release contains the fix.
-- **Name**: "Lantern" (working title; trivially renameable — a calm light that shows state without shouting).
+- **Name & identity**: "Frank" — a tortoise (SF Symbol `tortoise`) who reports frankly on PRs that are slowing you down. Calm label shows the bare tortoise; "–" on poll failure; counts live in the menu headline. An attention dot on the tortoise arrives with the attention states (slices 4–8) in place of any number in the bar.
 
 ## Acceptance Criteria
 
@@ -36,8 +36,8 @@ Every slice follows RED-GREEN-MUTATE-KILL MUTANTS-REFACTOR. No production code w
 
 **Value**: Angie glances at the menu bar and knows how many PRs she has in flight, without opening GitHub.
 **Path**: App launch → read token via `gh auth token` → GET `search/issues?q=is:pr+is:open+author:@me` → decode into `PullRequest` models → `MenuBarExtra` label renders the count → timer repeats every 60s. Skipped states: API errors render as `–` (no retry logic yet).
-**Follow pattern**: None — new project. Establish: SPM package with `LanternCore` (library, tested) + `Lantern` (executable, thin), Swift Testing (`@Test`) style.
-**Acceptance criteria**: Running `swift run Lantern` puts an item in the menu bar showing the number of open PRs authored by me; the number changes within ~60s of opening/closing a PR; `swift test` passes; decoding and count-presentation logic covered by tests. GitHub client is behind a protocol seam so tests never hit the network.
+**Follow pattern**: None — new project. Establish: SPM package with `FrankCore` (library, tested) + `Frank` (executable, thin), Swift Testing (`@Test`) style.
+**Acceptance criteria**: Running `swift run Frank` puts an item in the menu bar showing the number of open PRs authored by me; the number changes within ~60s of opening/closing a PR; `swift test` passes; decoding and count-presentation logic covered by tests. GitHub client is behind a protocol seam so tests never hit the network.
 **RED**: Failing tests for: decoding a GitHub search response fixture into `[PullRequest]`; presenter mapping `[PullRequest]` → menu bar label text (0 → calm idle glyph text, n → "n"); poll scheduler asking the client at the configured interval (fake clock). Mutant watch: boundary on empty list, interval constant, dropped-error path.
 **GREEN**: `PullRequest` model + `Codable` decoding, `GitHubSearchClient` (URLSession, token from `gh auth token` via one `Process` call at startup), `PRSummaryPresenter`, `MenuBarExtra` shell wiring.
 **MUTATE / KILL MUTANTS / REFACTOR**: per skills.
@@ -50,7 +50,7 @@ Every slice follows RED-GREEN-MUTATE-KILL MUTANTS-REFACTOR. No production code w
 **Follow pattern**: Slice 1's presenter/test style.
 **Acceptance criteria**: Menu shows all my open authored PRs with repo and title; clicking a row opens the PR's `html_url` in the default browser; empty state renders; row-model logic tested.
 **RED**: Failing tests for row-model mapping (`PullRequest` → title/subtitle/url), ordering (most recently updated first), empty-state model. Mutant watch: sort direction, URL passthrough.
-**GREEN**: `MenuRowModel` mapping in `LanternCore`; SwiftUI menu content + open-URL action in shell.
+**GREEN**: `MenuRowModel` mapping in `FrankCore`; SwiftUI menu content + open-URL action in shell.
 **Done when**: Real PRs listed and clickable; tests green; commit approved.
 
 ### Slice 3: PRs I commented on are tracked alongside authored ones
@@ -60,7 +60,7 @@ Every slice follows RED-GREEN-MUTATE-KILL MUTANTS-REFACTOR. No production code w
 **Follow pattern**: `GitHubSearchClient` from slice 1.
 **Acceptance criteria**: A PR I only commented on appears in the menu; a PR I authored *and* commented on appears once; count reflects the deduped union.
 **RED**: Failing tests for union/dedupe (overlap, disjoint, one source empty), and that both queries are issued. Mutant watch: dedupe key, dropped second query.
-**GREEN**: `PRScope` merge logic in `LanternCore`; client issues two searches.
+**GREEN**: `PRScope` merge logic in `FrankCore`; client issues two searches.
 **Done when**: Commented-on PR visible in the real menu; tests green; commit approved.
 
 ### Slice 4: Each menu row shows its PR's CI rollup state (passing / failing / pending)
@@ -106,7 +106,7 @@ Every slice follows RED-GREEN-MUTATE-KILL MUTANTS-REFACTOR. No production code w
 ### Slice 8: Aggregate menu bar glyph + seen-state persists across restarts (no repeat-nag, ever)
 
 **Value**: The icon itself becomes the calm summary (all-clear / attention / red), and relaunching the app never replays old notifications.
-**Path**: Aggregate state = worst-of tracked PRs (any failing → red dot, any changes-requested → attention, else calm) → `MenuBarExtra` glyph. Snapshot (CI states, review decisions, comment high-water marks) serialises to `~/Library/Application Support/Lantern/state.json` after each poll; loaded at launch as the baseline.
+**Path**: Aggregate state = worst-of tracked PRs (any failing → red dot, any changes-requested → attention, else calm) → `MenuBarExtra` glyph. Snapshot (CI states, review decisions, comment high-water marks) serialises to `~/Library/Application Support/Frank/state.json` after each poll; loaded at launch as the baseline.
 **Follow pattern**: Presenter + snapshot types from earlier slices.
 **Acceptance criteria**: Glyph reflects worst state and updates on poll; after quit+relaunch with unchanged GitHub state, zero notifications fire; a transition that happened *while quit* fires exactly once on next poll; round-trip and aggregation tested.
 **RED**: Failing tests for worst-of aggregation (orderings, empty set), snapshot round-trip, relaunch-suppression (persisted baseline → no events), missed-transition-fires-once. Mutant watch: severity ordering, load-fallback-to-empty.

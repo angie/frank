@@ -1,5 +1,5 @@
 import Foundation
-import LanternCore
+import FrankCore
 import Testing
 
 @Suite("Menu rows")
@@ -11,15 +11,15 @@ struct MenuRowsTests {
                 id: 111,
                 number: 42,
                 title: "Add mindful notifications",
-                repositoryFullName: "angie/pr-lantern",
-                htmlURL: URL(string: "https://github.com/angie/pr-lantern/pull/42")!
+                repositoryFullName: "angie/pr-frank",
+                htmlURL: URL(string: "https://github.com/angie/pr-frank/pull/42")!
             ),
         ])
 
         let row = try #require(rows.first)
         #expect(row.id == 111)
-        #expect(row.text == "pr-lantern#42 · Add mindful notifications")
-        #expect(row.url == URL(string: "https://github.com/angie/pr-lantern/pull/42"))
+        #expect(row.text == "pr-frank#42 · Add mindful notifications")
+        #expect(row.url == URL(string: "https://github.com/angie/pr-frank/pull/42"))
     }
 
     @Test("rows are ordered most recently updated first")
