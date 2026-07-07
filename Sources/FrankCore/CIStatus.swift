@@ -43,14 +43,17 @@ public enum ReviewDecision: String, Equatable, Sendable, Codable {
 public struct CheckDetail: Equatable, Sendable, Codable {
     public let name: String
     public let state: CIState
+    public let url: URL?
 
-    public init(name: String, state: CIState) {
+    public init(name: String, state: CIState, url: URL? = nil) {
         self.name = name
         self.state = state
+        self.url = url
     }
 
-    public init(checkRunConclusion: String?, name: String) {
+    public init(checkRunConclusion: String?, name: String, url: URL? = nil) {
         self.name = name
+        self.url = url
         switch checkRunConclusion {
         case "SUCCESS":
             state = .passing
@@ -123,7 +126,7 @@ public enum ChecksQuery {
             reviews(states: APPROVED) { totalCount } \
             comments(last: 10) { totalCount nodes { author { login } } } \
             commits(last: 1) { nodes { commit { statusCheckRollup { state \
-            contexts(first: 30) { nodes { __typename ... on CheckRun { name conclusion } ... on StatusContext { context state } } } } } } } } }
+            contexts(first: 30) { nodes { __typename ... on CheckRun { name conclusion detailsUrl } ... on StatusContext { context state targetUrl } } } } } } } } }
             """
         }
         return "query { \(blocks.joined(separator: " ")) }"
@@ -191,8 +194,10 @@ public enum ChecksResponse {
         let __typename: String
         let name: String?
         let conclusion: String?
+        let detailsUrl: URL?
         let context: String?
         let state: String?
+        let targetUrl: URL?
     }
 
     public static func statuses(from data: Data, orderedIDs: [Int]) throws -> [Int: PRChecks] {
@@ -215,9 +220,9 @@ public enum ChecksResponse {
                 checkDetails: (rollup?.contexts?.nodes ?? []).compactMap { node in
                     switch node.__typename {
                     case "CheckRun":
-                        return CheckDetail(checkRunConclusion: node.conclusion, name: node.name ?? "check")
+                        return CheckDetail(checkRunConclusion: node.conclusion, name: node.name ?? "check", url: node.detailsUrl)
                     case "StatusContext":
-                        return CheckDetail(name: node.context ?? "status", state: CIState(rollupState: node.state))
+                        return CheckDetail(name: node.context ?? "status", state: CIState(rollupState: node.state), url: node.targetUrl)
                     default:
                         return nil
                     }

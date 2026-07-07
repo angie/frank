@@ -126,7 +126,7 @@ struct CIStatusTests {
     func queryAsksForCheckContexts() {
         let query = ChecksQuery.build(for: [makePullRequest(id: 1)])
 
-        #expect(query.contains("contexts(first: 30) { nodes { __typename ... on CheckRun { name conclusion } ... on StatusContext { context state } } }"))
+        #expect(query.contains("contexts(first: 30) { nodes { __typename ... on CheckRun { name conclusion detailsUrl } ... on StatusContext { context state targetUrl } } }"))
     }
 
     @Test("check runs and status contexts decode into named check details")
@@ -138,11 +138,11 @@ struct CIStatusTests {
                 "commits": {"nodes": [{"commit": {"statusCheckRollup": {
                     "state": "FAILURE",
                     "contexts": {"nodes": [
-                        {"__typename": "CheckRun", "name": "Travis CI - Pull Request", "conclusion": "FAILURE"},
-                        {"__typename": "CheckRun", "name": "Summary", "conclusion": "SUCCESS"},
+                        {"__typename": "CheckRun", "name": "Travis CI - Pull Request", "conclusion": "FAILURE", "detailsUrl": "https://circleci.com/run/1"},
+                        {"__typename": "CheckRun", "name": "Summary", "conclusion": "SUCCESS", "detailsUrl": null},
                         {"__typename": "CheckRun", "name": "Deploy preview", "conclusion": null},
                         {"__typename": "CheckRun", "name": "Lint (optional)", "conclusion": "SKIPPED"},
-                        {"__typename": "StatusContext", "context": "codecov/project", "state": "SUCCESS"},
+                        {"__typename": "StatusContext", "context": "codecov/project", "state": "SUCCESS", "targetUrl": "https://codecov.io/project/9"},
                         {"__typename": "StatusContext", "context": "codecov/patch", "state": "PENDING"}
                     ]}
                 }}}]}
@@ -153,11 +153,11 @@ struct CIStatusTests {
         let checks = try #require(try ChecksResponse.statuses(from: data, orderedIDs: [1])[1])
 
         #expect(checks.checkDetails == [
-            CheckDetail(name: "Travis CI - Pull Request", state: .failing),
+            CheckDetail(name: "Travis CI - Pull Request", state: .failing, url: URL(string: "https://circleci.com/run/1")),
             CheckDetail(name: "Summary", state: .passing),
             CheckDetail(name: "Deploy preview", state: .pending),
             CheckDetail(name: "Lint (optional)", state: .noChecks),
-            CheckDetail(name: "codecov/project", state: .passing),
+            CheckDetail(name: "codecov/project", state: .passing, url: URL(string: "https://codecov.io/project/9")),
             CheckDetail(name: "codecov/patch", state: .pending),
         ])
     }

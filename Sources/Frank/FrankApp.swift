@@ -219,16 +219,7 @@ private struct PRRow: View {
     private var checksList: some View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach(Array(row.checkDetails.enumerated()), id: \.offset) { _, check in
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(dotColor(for: check.state))
-                        .frame(width: 6, height: 6)
-                    Text(check.name)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
+                CheckRowView(check: check, color: dotColor(for: check.state))
             }
         }
         .padding(.leading, 46)
@@ -305,6 +296,42 @@ private struct JiraLinkText: View {
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .help("Open Jira ticket")
+    }
+}
+
+private struct CheckRowView: View {
+    let check: CheckDetail
+    let color: Color
+    @Environment(\.dismiss) private var dismiss
+    @State private var hovering = false
+
+    var body: some View {
+        if let url = check.url {
+            Button {
+                NSWorkspace.shared.open(url)
+                dismiss()
+            } label: {
+                label.underline(hovering)
+            }
+            .buttonStyle(.plain)
+            .onHover { hovering = $0 }
+            .help("Open this run")
+        } else {
+            label
+        }
+    }
+
+    private var label: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(color)
+                .frame(width: 6, height: 6)
+            Text(check.name)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
     }
 }
 
