@@ -57,7 +57,18 @@ private struct FrankPanel: View {
         case .failed:
             PanelMessage(text: "Couldn't reach GitHub — Frank keeps trying")
         case .loaded(let pullRequests) where pullRequests.isEmpty:
-            PanelMessage(text: "No open pull requests.\nFrank will let you know when something needs you.")
+            VStack(spacing: 10) {
+                if let path = Bundle.main.path(forResource: "tortoise-woodcut", ofType: "svg"),
+                   let woodcut = NSImage(contentsOfFile: path) {
+                    Image(nsImage: woodcut)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 72)
+                        .padding(.top, 22)
+                }
+                PanelMessage(text: "No open pull requests.\nFrank will let you know when something needs you.")
+                    .padding(.top, -20)
+            }
         case .loaded(let pullRequests):
             let sections = MenuSections.compute(
                 for: pullRequests,
