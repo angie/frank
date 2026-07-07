@@ -94,6 +94,32 @@ struct CIStatusTests {
         #expect(query.contains("statusCheckRollup"))
         #expect(query.contains("reviewDecision"))
         #expect(query.contains("comments(last: 10) { totalCount nodes { author { login } } }"))
+        #expect(query.contains("additions deletions createdAt"))
+        #expect(query.contains("reviews(states: APPROVED) { totalCount }"))
+    }
+
+    @Test("a checks response decodes size, approvals and age")
+    func decodesSizeApprovalsAndAge() throws {
+        let data = Data("""
+        {"data": {
+            "pr0": {"pullRequest": {
+                "reviewDecision": "APPROVED",
+                "additions": 120,
+                "deletions": 45,
+                "createdAt": "2026-07-04T10:00:00Z",
+                "reviews": {"totalCount": 2},
+                "comments": {"totalCount": 0, "nodes": []},
+                "commits": {"nodes": [{"commit": {"statusCheckRollup": {"state": "SUCCESS"}}}]}
+            }}
+        }}
+        """.utf8)
+
+        let checks = try #require(try ChecksResponse.statuses(from: data, orderedIDs: [1])[1])
+
+        #expect(checks.additions == 120)
+        #expect(checks.deletions == 45)
+        #expect(checks.approvals == 2)
+        #expect(checks.createdAt == ISO8601DateFormatter().date(from: "2026-07-04T10:00:00Z"))
     }
 
     @Test("a checks response decodes comment counts and recent commenters")

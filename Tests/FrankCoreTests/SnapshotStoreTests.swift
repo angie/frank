@@ -29,6 +29,20 @@ struct SnapshotStoreTests {
         #expect(FileSnapshotStore(fileURL: temporaryFile()).load() == nil)
     }
 
+    @Test("a snapshot from before the layout fields still loads")
+    func legacySnapshotLoads() throws {
+        let url = temporaryFile()
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(#"{"1":{"ci":"failing","review":"approved","commentCount":2,"recentCommenters":["sam"]}}"#.utf8)
+            .write(to: url)
+
+        let loaded = FileSnapshotStore(fileURL: url).load()
+
+        #expect(loaded?[1]?.ci == .failing)
+        #expect(loaded?[1]?.approvals == 0)
+        #expect(loaded?[1]?.createdAt == nil)
+    }
+
     @Test("a corrupt file loads as nothing")
     func corruptFileLoadsNil() throws {
         let url = temporaryFile()

@@ -2,6 +2,8 @@ import Foundation
 import FrankCore
 import Testing
 
+private let now = Date(timeIntervalSince1970: 1_780_000_000)
+
 @Suite("Menu rows")
 struct MenuRowsTests {
     @Test("a pull request becomes a row with repo#number, title and its web URL")
@@ -14,7 +16,7 @@ struct MenuRowsTests {
                 repositoryFullName: "angie/pr-frank",
                 htmlURL: URL(string: "https://github.com/angie/pr-frank/pull/42")!
             ),
-        ])
+        ], statuses: [:], now: now)
 
         let row = try #require(rows.first)
         #expect(row.id == 111)
@@ -27,14 +29,14 @@ struct MenuRowsTests {
         let older = makePullRequest(id: 1, number: 1, updatedAt: Date(timeIntervalSince1970: 1_000))
         let newer = makePullRequest(id: 2, number: 2, updatedAt: Date(timeIntervalSince1970: 2_000))
 
-        let rows = MenuRow.rows(for: [older, newer])
+        let rows = MenuRow.rows(for: [older, newer], statuses: [:], now: now)
 
         #expect(rows.map(\.id) == [2, 1])
     }
 
     @Test("no open pull requests yields no rows")
     func emptyListYieldsNoRows() {
-        #expect(MenuRow.rows(for: []).isEmpty)
+        #expect(MenuRow.rows(for: [], statuses: [:], now: now).isEmpty)
     }
 
     @Test("rows carry a CI glyph matching each pull request's state", arguments: [
@@ -43,9 +45,77 @@ struct MenuRowsTests {
         (CIState.pending, "clock"),
     ])
     func rowsCarryCIGlyph(state: CIState, symbol: String) throws {
-        let rows = MenuRow.rows(for: [makePullRequest(id: 1)], ciStates: [1: state])
+        let statuses = [1: PRChecks(ci: state, review: .noDecision)]
+
+        let rows = MenuRow.rows(for: [makePullRequest(id: 1)], statuses: statuses, now: now)
 
         #expect(try #require(rows.first).ciSymbolName == symbol)
+    }
+
+    @Test("no checks and unknown CI state show no glyph")
+    func noChecksShowsNoGlyph() throws {
+        let known = MenuRow.rows(
+            for: [makePullRequest(id: 1)],
+            statuses: [1: PRChecks(ci: .noChecks, review: .noDecision)],
+            now: now
+        )
+        let unknown = MenuRow.rows(for: [makePullRequest(id: 2)], statuses: [:], now: now)
+
+        #expect(try #require(known.first).ciSymbolName == nil)
+        #expect(try #require(unknown.first).ciSymbolName == nil)
+    }
+
+    @Test("a row's detail shows approvals, diff size and age")
+    func detailShowsApprovalsDiffAndAge() throws {
+        let checks = PRChecks(
+            ci: .passing, review: .approved,
+            additions: 120, deletions: 45, approvals: 2,
+            createdAt: now.addingTimeInterval(-3 * 86_400)
+        )
+
+        let rows = MenuRow.rows(for: [makePullRequest(id: 1)], statuses: [1: checks], now: now)
+
+        #expect(try #require(rows.first).detail == "✓2 · +120 −45 · 3d")
+    }
+
+    @Test("zero approvals and an empty diff are omitted from the detail")
+    func detailOmitsEmptyParts() throws {
+        let checks = PRChecks(
+            ci: .pending, review: .noDecision,
+            additions: 0, deletions: 0, approvals: 0,
+            createdAt: now.addingTimeInterval(-300)
+        )
+
+        let rows = MenuRow.rows(for: [makePullRequest(id: 1)], statuses: [1: checks], now: now)
+
+        #expect(try #require(rows.first).detail == "5m")
+    }
+
+    @Test("age formats by magnitude", arguments: [
+        (300.0, "5m"),
+        (3_540.0, "59m"),
+        (3_600.0, "1h"),
+        (82_800.0, "23h"),
+        (86_400.0, "1d"),
+        (12 * 86_400.0, "12d"),
+    ])
+    func ageFormatsByMagnitude(secondsAgo: Double, expected: String) throws {
+        let checks = PRChecks(
+            ci: .passing, review: .noDecision,
+            additions: 0, deletions: 0, approvals: 0,
+            createdAt: now.addingTimeInterval(-secondsAgo)
+        )
+
+        let rows = MenuRow.rows(for: [makePullRequest(id: 1)], statuses: [1: checks], now: now)
+
+        #expect(try #require(rows.first).detail == expected)
+    }
+
+    @Test("a PR with no status data has no detail")
+    func noStatusMeansNoDetail() throws {
+        let rows = MenuRow.rows(for: [makePullRequest(id: 1)], statuses: [:], now: now)
+
+        #expect(try #require(rows.first).detail == nil)
     }
 
     @Test("rows split into mine and watching by authorship")
@@ -53,7 +123,7 @@ struct MenuRowsTests {
         let mine = makePullRequest(id: 1, number: 1)
         let watched = makePullRequest(id: 2, number: 2)
 
-        let sections = MenuSections.compute(for: [mine, watched], ciStates: [:], authoredIDs: [1])
+        let sections = MenuSections.compute(for: [mine, watched], statuses: [:], authoredIDs: [1], now: now)
 
         #expect(sections.mine.map(\.id) == [1])
         #expect(sections.watching.map(\.id) == [2])
@@ -65,29 +135,23 @@ struct MenuRowsTests {
         let newer = makePullRequest(id: 2, updatedAt: Date(timeIntervalSince1970: 2_000))
         let watched = makePullRequest(id: 3)
 
-        let sections = MenuSections.compute(for: [older, watched, newer], ciStates: [:], authoredIDs: [1, 2])
+        let sections = MenuSections.compute(for: [older, watched, newer], statuses: [:], authoredIDs: [1, 2], now: now)
 
         #expect(sections.mine.map(\.id) == [2, 1])
         #expect(sections.watching.map(\.id) == [3])
     }
 
-    @Test("sections carry CI glyphs through")
-    func sectionsCarryGlyphs() throws {
+    @Test("sections carry CI glyphs and detail through")
+    func sectionsCarryGlyphsAndDetail() throws {
         let sections = MenuSections.compute(
             for: [makePullRequest(id: 1)],
-            ciStates: [1: .failing],
-            authoredIDs: [1]
+            statuses: [1: PRChecks(ci: .failing, review: .noDecision, createdAt: now.addingTimeInterval(-3_600))],
+            authoredIDs: [1],
+            now: now
         )
 
-        #expect(try #require(sections.mine.first).ciSymbolName == "xmark.circle")
-    }
-
-    @Test("no checks and unknown CI state show no glyph")
-    func noChecksShowsNoGlyph() throws {
-        let known = MenuRow.rows(for: [makePullRequest(id: 1)], ciStates: [1: .noChecks])
-        let unknown = MenuRow.rows(for: [makePullRequest(id: 2)])
-
-        #expect(try #require(known.first).ciSymbolName == nil)
-        #expect(try #require(unknown.first).ciSymbolName == nil)
+        let row = try #require(sections.mine.first)
+        #expect(row.ciSymbolName == "xmark.circle")
+        #expect(row.detail == "1h")
     }
 }

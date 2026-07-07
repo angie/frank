@@ -32,8 +32,9 @@ struct FrankApp: App {
             if case .loaded(let pullRequests) = monitor.state, !pullRequests.isEmpty {
                 let sections = MenuSections.compute(
                     for: pullRequests,
-                    ciStates: monitor.ciStates,
-                    authoredIDs: monitor.authoredIDs
+                    statuses: monitor.statuses,
+                    authoredIDs: monitor.authoredIDs,
+                    now: Date()
                 )
                 if !sections.mine.isEmpty {
                     Section("Mine") {
@@ -66,6 +67,9 @@ private struct PRRowButton: View {
                 Label(row.text, systemImage: symbol)
             } else {
                 Text(row.text)
+            }
+            if let detail = row.detail {
+                Text(detail)
             }
         }
     }
