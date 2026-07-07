@@ -1,6 +1,6 @@
 import Foundation
 
-public enum CIState: Equatable, Sendable {
+public enum CIState: String, Equatable, Sendable, Codable {
     case passing
     case failing
     case pending
@@ -20,7 +20,7 @@ public enum CIState: Equatable, Sendable {
     }
 }
 
-public enum ReviewDecision: Equatable, Sendable {
+public enum ReviewDecision: String, Equatable, Sendable, Codable {
     case approved
     case changesRequested
     case awaitingReview
@@ -40,7 +40,7 @@ public enum ReviewDecision: Equatable, Sendable {
     }
 }
 
-public struct PRChecks: Equatable, Sendable {
+public struct PRChecks: Equatable, Sendable, Codable {
     public let ci: CIState
     public let review: ReviewDecision
     public let commentCount: Int

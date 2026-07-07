@@ -9,11 +9,15 @@ struct FrankApp: App {
     init() {
         let monitor: PRMonitor
         if let token = try? GitHubToken.fromGhCLI() {
+            let stateURL = FileManager.default
+                .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("Frank/state.json")
             monitor = PRMonitor(
                 client: GitHubSearchClient(token: token),
                 checks: GitHubChecksClient(token: token),
                 notifier: UNNotifier(),
-                selfLogin: GitHubViewer.login()
+                selfLogin: GitHubViewer.login(),
+                store: FileSnapshotStore(fileURL: stateURL)
             )
         } else {
             monitor = PRMonitor(client: UnauthenticatedClient())
@@ -51,9 +55,13 @@ struct FrankApp: App {
 private struct FrankMenuBarLabel: View {
     let monitor: PRMonitor
 
+    private var tortoiseSymbol: String {
+        AggregateState.compute(from: monitor.statuses) == .calm ? "tortoise" : "tortoise.fill"
+    }
+
     var body: some View {
         HStack(spacing: 2) {
-            Image(systemName: "tortoise")
+            Image(systemName: tortoiseSymbol)
             if let text = MenuBarSummary.labelText(for: monitor.state) {
                 Text(text)
             }

@@ -44,6 +44,7 @@ public final class PRMonitor {
     private let notifier: any UserNotifier
     private let selfLogin: String?
     private let digestInterval: Duration
+    private let store: any SnapshotStoring
     private var lastKnown: [Int: PRChecks]?
     private var digest: DigestBuffer?
 
@@ -52,13 +53,16 @@ public final class PRMonitor {
         checks: any ChecksFetching = NoChecks(),
         notifier: any UserNotifier = SilentNotifier(),
         selfLogin: String? = nil,
-        digestInterval: Duration = PRMonitor.defaultDigestInterval
+        digestInterval: Duration = PRMonitor.defaultDigestInterval,
+        store: any SnapshotStoring = NoStore()
     ) {
         self.client = client
         self.checks = checks
         self.notifier = notifier
         self.selfLogin = selfLogin
         self.digestInterval = digestInterval
+        self.store = store
+        self.lastKnown = store.load()
     }
 
     public func poll(now: Date = Date()) async {
@@ -106,6 +110,7 @@ public final class PRMonitor {
         digest = buffer
 
         lastKnown = fresh
+        store.save(fresh)
     }
 
     public func run(

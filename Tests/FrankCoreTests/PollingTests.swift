@@ -49,6 +49,23 @@ private actor FakeChecksClient: ChecksFetching {
     }
 }
 
+private final class FakeSnapshotStore: SnapshotStoring, @unchecked Sendable {
+    private let initial: [Int: PRChecks]?
+    private(set) var saved: [[Int: PRChecks]] = []
+
+    init(initial: [Int: PRChecks]?) {
+        self.initial = initial
+    }
+
+    func load() -> [Int: PRChecks]? {
+        initial
+    }
+
+    func save(_ statuses: [Int: PRChecks]) {
+        saved.append(statuses)
+    }
+}
+
 private actor SpyNotifier: UserNotifier {
     private(set) var posted: [NotificationContent] = []
 
@@ -311,6 +328,64 @@ struct PollingTests {
         await monitor.poll(now: start + 1800)
 
         #expect(await notifier.posted.isEmpty)
+    }
+
+    @MainActor
+    @Test("a relaunch with unchanged state stays completely silent")
+    func relaunchStaysSilent() async {
+        let pr = makePullRequest(id: 1)
+        let failing = PRChecks(ci: .failing, review: .changesRequested, commentCount: 3, recentCommenters: ["sam"])
+        let store = FakeSnapshotStore(initial: [1: failing])
+        let notifier = SpyNotifier()
+        let monitor = PRMonitor(
+            client: FakeSearchClient(result: .success([pr])),
+            checks: FakeChecksClient(result: .success([1: failing])),
+            notifier: notifier,
+            selfLogin: "angie",
+            store: store
+        )
+
+        await monitor.poll()
+
+        #expect(await notifier.posted.isEmpty)
+    }
+
+    @MainActor
+    @Test("a transition that happened while quit fires exactly once on the next poll")
+    func missedTransitionFiresOnce() async {
+        let pr = makePullRequest(id: 1)
+        let store = FakeSnapshotStore(initial: [1: PRChecks(ci: .passing, review: .noDecision)])
+        let notifier = SpyNotifier()
+        let monitor = PRMonitor(
+            client: FakeSearchClient(result: .success([pr])),
+            checks: FakeChecksClient(result: .success([1: PRChecks(ci: .failing, review: .noDecision)])),
+            notifier: notifier,
+            store: store
+        )
+
+        await monitor.poll()
+        await monitor.poll()
+
+        let posted = await notifier.posted
+        #expect(posted.count == 1)
+        #expect(posted.first?.title == "❌ CI failing")
+    }
+
+    @MainActor
+    @Test("each successful poll saves the snapshot")
+    func pollSavesSnapshot() async {
+        let pr = makePullRequest(id: 1)
+        let fresh = [1: PRChecks(ci: .passing, review: .approved)]
+        let store = FakeSnapshotStore(initial: nil)
+        let monitor = PRMonitor(
+            client: FakeSearchClient(result: .success([pr])),
+            checks: FakeChecksClient(result: .success(fresh)),
+            store: store
+        )
+
+        await monitor.poll()
+
+        #expect(store.saved == [fresh])
     }
 
     @Test("the default digest interval is thirty minutes")
