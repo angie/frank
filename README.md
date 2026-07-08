@@ -11,7 +11,8 @@
 <p align="center">
   <img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-f38ba8?labelColor=1e1e2e">
   <img alt="macOS 15+" src="https://img.shields.io/badge/macOS-15%2B-a6e3a1?labelColor=1e1e2e">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-99-89b4fa?labelColor=1e1e2e">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-108-89b4fa?labelColor=1e1e2e">
+  <img alt="MIT" src="https://img.shields.io/badge/licence-MIT-cba6f7?labelColor=1e1e2e">
 </p>
 
 ---
@@ -32,6 +33,8 @@ something changes that you'd act on. Everything else waits in the panel until yo
   opens the PR.
 - **Restart-safe.** Seen-state persists, so a relaunch replays nothing, and a transition
   that happened while quit fires once.
+- **Launch at login.** A checkbox in the panel footer, registered through
+  `SMAppService`, revocable there or in System Settings.
 
 ## Install
 
@@ -39,8 +42,14 @@ Requires macOS 15+ and an authenticated [`gh` CLI](https://cli.github.com); Fran
 borrows its token.
 
 ```sh
-scripts/make-app.sh && open .build/Frank.app
+git clone https://github.com/angie/frank.git
+cd frank
+scripts/install.sh
 ```
+
+That builds a release bundle into `~/Applications/Frank.app`, where login-item and
+notification registrations survive `swift package clean`. For a throwaway run from the
+working tree, `scripts/make-app.sh && open .build/Frank.app`.
 
 macOS won't grant a bare executable a status item or notification rights, so the build
 script wraps one. If the tortoise doesn't appear, check your menu bar manager's hidden
@@ -70,6 +79,10 @@ swift test
 Changes follow RED → GREEN → MUTATE → KILL MUTANTS → REFACTOR. Mutation testing is
 manual until muter's Swift Testing fix (PR #306) gets released.
 
+## Licence
+
+[MIT](LICENSE).
+
 ## Credits
 
 Icon tortoise: public-domain engraving from
@@ -81,5 +94,5 @@ Icon tortoise: public-domain engraving from
 - Coloured attention dot in the menu bar (blocked on `MenuBarExtra` label rendering;
   needs a custom appearance-aware `NSImage`)
 - Quiet hours / Focus awareness, per-repo mute, pin list, review-requested scope,
-  launch at login, Sparkle updates
+  Sparkle updates
 - Digest window resets on relaunch (worst case: one early digest)
