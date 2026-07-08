@@ -5,12 +5,12 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-swift build
+swift build -c release
 
 APP=.build/Frank.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp .build/debug/Frank "$APP/Contents/MacOS/Frank"
+cp .build/release/Frank "$APP/Contents/MacOS/Frank"
 cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
