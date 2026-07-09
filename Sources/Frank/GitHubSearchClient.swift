@@ -52,9 +52,15 @@ struct GitHubChecksClient: ChecksFetching {
 
 enum GitHubCLI {
     static func run(_ arguments: [String]) throws -> String {
+        guard let gh = GhResolver.resolve(
+            pathEnvironment: ProcessInfo.processInfo.environment["PATH"],
+            isExecutableFile: { FileManager.default.isExecutableFile(atPath: $0) }
+        ) else {
+            throw NotAuthenticated()
+        }
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["gh"] + arguments
+        process.executableURL = URL(fileURLWithPath: gh)
+        process.arguments = arguments
         let stdout = Pipe()
         process.standardOutput = stdout
         process.standardError = Pipe()
@@ -64,7 +70,7 @@ enum GitHubCLI {
         let output = String(decoding: stdout.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
         let result = output.trimmingCharacters(in: .whitespacesAndNewlines)
         guard process.terminationStatus == 0, !result.isEmpty else {
-            throw URLError(.userAuthenticationRequired)
+            throw NotAuthenticated()
         }
         return result
     }
@@ -84,10 +90,10 @@ enum GitHubViewer {
 
 struct UnauthenticatedClient: PullRequestSearching {
     func openAuthoredPullRequests() async throws -> [PullRequest] {
-        throw URLError(.userAuthenticationRequired)
+        throw NotAuthenticated()
     }
 
     func openCommentedPullRequests() async throws -> [PullRequest] {
-        throw URLError(.userAuthenticationRequired)
+        throw NotAuthenticated()
     }
 }

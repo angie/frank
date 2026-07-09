@@ -58,6 +58,8 @@ private struct FrankPanel: View {
             PanelMessage(text: "Checking GitHub…")
         case .failed:
             PanelMessage(text: "Couldn't reach GitHub — Frank keeps trying")
+        case .unauthenticated:
+            PanelMessage(text: "Frank can't find an authenticated gh CLI.\nInstall it, run `gh auth login`, then relaunch Frank.")
         case .loaded(let pullRequests) where pullRequests.isEmpty:
             PanelMessage(text: "No open pull requests.\nFrank will let you know when something needs you.")
         case .loaded(let pullRequests):

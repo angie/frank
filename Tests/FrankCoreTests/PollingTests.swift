@@ -114,6 +114,17 @@ struct PollingTests {
     }
 
     @MainActor
+    @Test("a poll rejected for missing authentication publishes the unauthenticated state")
+    func missingAuthPublishesUnauthenticatedState() async {
+        let monitor = PRMonitor(client: FakeSearchClient(result: .failure(NotAuthenticated())))
+
+        await monitor.poll()
+
+        #expect(monitor.state == .unauthenticated)
+        #expect(monitor.state != .failed)
+    }
+
+    @MainActor
     @Test("run polls immediately and again after each interval, until cancelled")
     func runPollsOnEachInterval() async {
         let client = FakeSearchClient(result: .success([makePullRequest()]))

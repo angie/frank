@@ -4,6 +4,13 @@ public enum PollState: Equatable, Sendable {
     case idle
     case loaded([PullRequest])
     case failed
+    case unauthenticated
+}
+
+/// Thrown by clients when GitHub credentials are missing, as opposed to
+/// GitHub being unreachable. PRMonitor surfaces the two differently.
+public struct NotAuthenticated: Error {
+    public init() {}
 }
 
 public enum MenuBarSummary {
@@ -11,7 +18,7 @@ public enum MenuBarSummary {
         switch state {
         case .idle, .loaded:
             return nil
-        case .failed:
+        case .failed, .unauthenticated:
             return "–"
         }
     }
@@ -22,6 +29,8 @@ public enum MenuBarSummary {
             return "Checking GitHub…"
         case .failed:
             return "Couldn't reach GitHub"
+        case .unauthenticated:
+            return "Not signed in to GitHub"
         case .loaded(let pullRequests) where pullRequests.isEmpty:
             return "No open pull requests"
         case .loaded(let pullRequests) where pullRequests.count == 1:

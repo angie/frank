@@ -75,6 +75,9 @@ public final class PRMonitor {
             merged = PRScope.merge(authored: mine, commented: try await commented)
             authoredIDs = Set(mine.map(\.id))
             state = .loaded(merged)
+        } catch is NotAuthenticated {
+            state = .unauthenticated
+            return
         } catch {
             state = .failed
             return

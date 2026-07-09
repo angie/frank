@@ -16,10 +16,16 @@ struct MenuBarSummaryTests {
         #expect(MenuBarSummary.labelText(for: .failed) == "–")
     }
 
+    @Test("the menu bar shows a dash when Frank has no GitHub credentials")
+    func unauthenticatedShowsDash() {
+        #expect(MenuBarSummary.labelText(for: .unauthenticated) == "–")
+    }
+
     @Test("the menu headline reports each state honestly")
     func menuHeadlinePerState() {
         #expect(MenuBarSummary.menuHeadline(for: .idle) == "Checking GitHub…")
         #expect(MenuBarSummary.menuHeadline(for: .failed) == "Couldn't reach GitHub")
+        #expect(MenuBarSummary.menuHeadline(for: .unauthenticated) == "Not signed in to GitHub")
         #expect(MenuBarSummary.menuHeadline(for: .loaded([])) == "No open pull requests")
     }
 

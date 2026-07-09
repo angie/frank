@@ -11,7 +11,7 @@
 <p align="center">
   <img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-f38ba8?labelColor=1e1e2e">
   <img alt="macOS 15+" src="https://img.shields.io/badge/macOS-15%2B-a6e3a1?labelColor=1e1e2e">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-108-89b4fa?labelColor=1e1e2e">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-119-89b4fa?labelColor=1e1e2e">
   <img alt="MIT" src="https://img.shields.io/badge/licence-MIT-cba6f7?labelColor=1e1e2e">
 </p>
 
