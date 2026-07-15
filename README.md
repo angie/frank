@@ -5,7 +5,7 @@
 <h1 align="center">Frank</h1>
 
 <p align="center">
-  <em>A quiet GitHub pull-request reporter for the macOS menu bar.</em>
+  <em>A GitHub pull-request reporter for the macOS menu bar.</em>
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
 ---
 
 Frank watches the pull requests you authored or commented on and notifies you only when
-something changes that you'd act on. Everything else waits in the panel until you ask.
+something changes that you can act on. Everything else waits in the panel until you ask.
 
 ## Features
 
@@ -37,8 +37,7 @@ something changes that you'd act on. Everything else waits in the panel until yo
 
 ## Install
 
-Frank builds from source, deliberately: an unsigned binary download would trip
-Gatekeeper, whereas a locally built app launches without ceremony.
+Frank builds from source.
 
 ### For humans
 
