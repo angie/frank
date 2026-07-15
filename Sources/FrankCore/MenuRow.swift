@@ -67,6 +67,22 @@ public struct MenuRow: Equatable, Sendable, Identifiable {
             }
     }
 
+    public var additionsLabel: String { "+" + Self.compact(additions) }
+    public var deletionsLabel: String { "−" + Self.compact(deletions) }
+
+    // Integer tenths keep the half-up rounding exact; %.1f drifts on
+    // values like 9.95 that binary floats can't represent.
+    private static func compact(_ count: Int) -> String {
+        if count < 1_000 { return "\(count)" }
+        let kTenths = (count + 50) / 100
+        if kTenths < 100 { return "\(kTenths / 10).\(kTenths % 10)k" }
+        let kWhole = (count + 500) / 1_000
+        if kWhole < 1_000 { return "\(kWhole)k" }
+        let mTenths = (count + 50_000) / 100_000
+        if mTenths < 100 { return "\(mTenths / 10).\(mTenths % 10)m" }
+        return "\((count + 500_000) / 1_000_000)m"
+    }
+
     private static func age(from start: Date, to now: Date) -> String {
         let seconds = max(0, now.timeIntervalSince(start))
         if seconds < 3_600 {

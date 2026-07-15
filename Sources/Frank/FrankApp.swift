@@ -187,9 +187,10 @@ private struct PRRow: View {
                         }
                         if row.additions + row.deletions > 0 {
                             HStack(spacing: 3) {
-                                Text("+\(row.additions)").foregroundStyle(Catppuccin.green)
-                                Text("−\(row.deletions)").foregroundStyle(Catppuccin.red)
+                                Text(verbatim: row.additionsLabel).foregroundStyle(Catppuccin.green)
+                                Text(verbatim: row.deletionsLabel).foregroundStyle(Catppuccin.red)
                             }
+                            .fixedSize()
                         }
                         if let age = row.age {
                             Text(age)
@@ -203,6 +204,7 @@ private struct PRRow: View {
                         }
                     }
                     .font(.system(size: 11))
+                    .lineLimit(1)
                     .foregroundStyle(.secondary)
                 }
             }

@@ -39,6 +39,34 @@ struct MenuRowsTests {
         #expect(row.avatarURL == URL(string: "https://avatars.githubusercontent.com/u/1?v=4"))
     }
 
+    @Test("diff counts render compactly", arguments: [
+        (0, "+0"),
+        (999, "+999"),
+        (1_000, "+1.0k"),
+        (1_040, "+1.0k"),
+        (1_951, "+2.0k"),
+        (9_949, "+9.9k"),
+        (9_950, "+10k"),
+        (12_345, "+12k"),
+        (999_499, "+999k"),
+        (999_500, "+1.0m"),
+        (2_400_000, "+2.4m"),
+    ])
+    func additionsLabelRendersCompactly(count: Int, expected: String) throws {
+        let checks = PRChecks(ci: .passing, review: .noDecision, additions: count, deletions: 3)
+        let rows = MenuRow.rows(for: [makePullRequest(id: 1)], statuses: [1: checks], now: now)
+
+        #expect(try #require(rows.first).additionsLabel == expected)
+    }
+
+    @Test("the deletions label uses a real minus sign and the same compaction")
+    func deletionsLabelUsesMinusSignAndCompaction() throws {
+        let checks = PRChecks(ci: .passing, review: .noDecision, additions: 1, deletions: 1_040)
+        let rows = MenuRow.rows(for: [makePullRequest(id: 1)], statuses: [1: checks], now: now)
+
+        #expect(try #require(rows.first).deletionsLabel == "−1.0k")
+    }
+
     @Test("a PR with no status data still rows up calmly")
     func noStatusMeansCalmRow() throws {
         let rows = MenuRow.rows(for: [makePullRequest(id: 1)], statuses: [:], now: now)
