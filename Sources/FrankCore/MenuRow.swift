@@ -75,12 +75,16 @@ public struct MenuRow: Equatable, Sendable, Identifiable {
     private static func compact(_ count: Int) -> String {
         if count < 1_000 { return "\(count)" }
         let kTenths = (count + 50) / 100
-        if kTenths < 100 { return "\(kTenths / 10).\(kTenths % 10)k" }
+        if kTenths < 100 { return tenthsLabel(kTenths, "k") }
         let kWhole = (count + 500) / 1_000
         if kWhole < 1_000 { return "\(kWhole)k" }
         let mTenths = (count + 50_000) / 100_000
-        if mTenths < 100 { return "\(mTenths / 10).\(mTenths % 10)m" }
+        if mTenths < 100 { return tenthsLabel(mTenths, "m") }
         return "\((count + 500_000) / 1_000_000)m"
+    }
+
+    private static func tenthsLabel(_ tenths: Int, _ unit: String) -> String {
+        tenths % 10 == 0 ? "\(tenths / 10)\(unit)" : "\(tenths / 10).\(tenths % 10)\(unit)"
     }
 
     private static func age(from start: Date, to now: Date) -> String {
