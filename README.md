@@ -11,7 +11,6 @@
 <p align="center">
   <img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-f38ba8?labelColor=1e1e2e">
   <img alt="macOS 15+" src="https://img.shields.io/badge/macOS-15%2B-a6e3a1?labelColor=1e1e2e">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-119-89b4fa?labelColor=1e1e2e">
   <img alt="MIT" src="https://img.shields.io/badge/licence-MIT-cba6f7?labelColor=1e1e2e">
 </p>
 
@@ -38,8 +37,21 @@ something changes that you'd act on. Everything else waits in the panel until yo
 
 ## Install
 
-Requires macOS 15+ and an authenticated [`gh` CLI](https://cli.github.com); Frank
-borrows its token.
+Frank builds from source, deliberately: an unsigned binary download would trip
+Gatekeeper, whereas a locally built app launches without ceremony.
+
+### For humans
+
+You need three things:
+
+1. **macOS 15 or newer.** Check with `sw_vers -productVersion`.
+2. **A Swift 6 toolchain.** Either Xcode from the App Store or the Command Line
+   Tools (`xcode-select --install`). Check that `swift --version` reports 6.x.
+3. **An authenticated [`gh` CLI](https://cli.github.com).** Install with
+   `brew install gh`, sign in with `gh auth login`. Frank borrows its token
+   rather than asking you to sign in again.
+
+Then:
 
 ```sh
 git clone https://github.com/angie/frank.git
@@ -47,18 +59,42 @@ cd frank
 scripts/install.sh
 ```
 
-That builds a release bundle into `~/Applications/Frank.app`, where login-item and
-notification registrations survive `swift package clean`. For a throwaway run from the
-working tree, `scripts/make-app.sh && open .build/Frank.app`.
+That builds a release bundle, installs it to `~/Applications/Frank.app`, and opens
+it. macOS asks once for notification permission. Installing outside `.build` keeps
+the login-item and notification registrations alive across `swift package clean`.
 
-macOS won't grant a bare executable a status item or notification rights, so the build
-script wraps one. If the tortoise doesn't appear, check your menu bar manager's hidden
-section.
+macOS won't grant a bare executable a status item or notification rights, so the
+build script wraps one in a minimal bundle. If the tortoise doesn't appear after
+launch, check your menu bar manager's hidden section.
 
-Test the notification plumbing without waiting for CI:
+For a throwaway run from the working tree instead:
+`scripts/make-app.sh && open .build/Frank.app`.
+
+### For agents
 
 ```sh
-FRANK_TEST_NOTIFICATION="hello" .build/Frank.app/Contents/MacOS/Frank
+# Preconditions — if any fail, stop and ask your human.
+sw_vers -productVersion   # 15.0 or newer
+swift --version           # Swift 6.x
+gh auth status            # an authenticated account that can read the user's PRs
+
+git clone https://github.com/angie/frank.git
+cd frank
+swift test                # the suite must pass before installing
+scripts/install.sh        # builds and installs ~/Applications/Frank.app, then opens it
+
+# Verify.
+pgrep -x Frank            # prints a PID when the app is running
+```
+
+Two interactive steps belong to the human: `gh auth login` and macOS's one-time
+notification-permission prompt. The install script kills any running Frank
+before replacing it.
+
+To smoke-test notifications without waiting for CI:
+
+```sh
+FRANK_TEST_NOTIFICATION="hello" ~/Applications/Frank.app/Contents/MacOS/Frank
 ```
 
 ## Jira links
@@ -76,8 +112,8 @@ presenters), all pure and tested; the `Frank` target is a thin SwiftUI shell.
 swift test
 ```
 
-Changes follow RED → GREEN → MUTATE → KILL MUTANTS → REFACTOR. Mutation testing is
-manual until muter's Swift Testing fix (PR #306) gets released.
+Changes follow RED → GREEN → MUTATE → KILL MUTANTS → REFACTOR. Mutation testing
+stays manual until muter's Swift Testing fix (PR #306) gets released.
 
 ## Licence
 
